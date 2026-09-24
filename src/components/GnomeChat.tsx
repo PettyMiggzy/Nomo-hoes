@@ -236,15 +236,15 @@ export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFre
         <input
           value={scene}
           onChange={(e) => setScene(e.target.value.slice(0, 300))}
-          placeholder="Describe a private pic you want..."
-          className="flex-1 rounded-full bg-white/5 px-4 py-2 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+          placeholder="Describe a private pic..."
+          className="min-w-0 flex-1 rounded-full bg-white/5 px-4 py-2 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
         />
         <button
           type="submit"
           disabled={picPending || !scene.trim()}
           className="whitespace-nowrap rounded-full bg-violet-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-30"
         >
-          {session?.owner ? "Get pic" : "Get pic · 0.5 NOMO"}
+          Get pic{!session?.owner && <span className="hidden sm:inline"> · 0.5 NOMO</span>}
         </button>
       </form>
     </div>

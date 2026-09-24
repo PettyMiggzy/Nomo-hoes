@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { GNOMES } from "@/data/gnomes";
+import NomPadBanner from "@/components/NomPadBanner";
 
 export const metadata: Metadata = {
   title: "Meet the Gnomes — NOMO HOES",
@@ -34,7 +35,11 @@ export default function GnomesPage() {
           real people.
         </p>
 
-        <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+        <div className="mt-8">
+          <NomPadBanner />
+        </div>
+
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {GNOMES.map((g) => (
             <Link
               key={g.id}

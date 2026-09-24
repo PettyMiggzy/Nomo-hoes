@@ -7,6 +7,8 @@ import { GUEST_FREE_MESSAGES } from "@/lib/credits";
 import GnomeChat from "@/components/GnomeChat";
 import NsfwTeaser from "@/components/NsfwTeaser";
 import GnomeAd from "@/components/GnomeAd";
+import NomoAd from "@/components/NomoAd";
+import NomPadBanner from "@/components/NomPadBanner";
 
 export function generateStaticParams() {
   return GNOMES.map((g) => ({ id: g.id }));
@@ -72,16 +74,22 @@ export default async function GnomePage({
             {teaser(2)}
           </aside>
           <GnomeChat gnome={gnome} guestFree={GUEST_FREE_MESSAGES} />
-          <aside className="hidden lg:block lg:sticky lg:top-6">
+          <aside className="hidden flex-col gap-4 lg:sticky lg:top-6 lg:flex">
             <GnomeAd gnomes={ads} />
+            <NomoAd />
           </aside>
           <div className="grid grid-cols-2 gap-4 lg:hidden">
             {teaser(1)}
             {teaser(2)}
           </div>
-          <div className="mx-auto w-full max-w-xs lg:hidden">
+          <div className="mx-auto grid w-full max-w-xs gap-4 lg:hidden">
             <GnomeAd gnomes={ads} />
+            <NomoAd />
           </div>
+        </div>
+
+        <div className="mt-10 w-full">
+          <NomPadBanner />
         </div>
       </main>
 
