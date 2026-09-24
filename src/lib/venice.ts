@@ -24,11 +24,14 @@ export async function veniceFetch(path: string, body: unknown): Promise<Response
 
 const CHAT_MODEL = process.env.VENICE_CHAT_MODEL ?? "venice-uncensored-role-play";
 const IMAGE_MODEL = process.env.VENICE_IMAGE_MODEL ?? "lustify-v8";
+// Venice doesn't return a cost for /image/generate; this is its published
+// flat rate for IMAGE_MODEL. Update if the model changes.
+export const IMAGE_COST_USD = Number(process.env.VENICE_IMAGE_COST_USD ?? 0.01);
 
 export async function veniceChat(
   systemPrompt: string,
   messages: { role: "user" | "assistant"; content: string }[],
-): Promise<string> {
+): Promise<{ reply: string; costUsd: number }> {
   const res = await veniceFetch("/chat/completions", {
     model: CHAT_MODEL,
     temperature: 0.9,
@@ -37,7 +40,10 @@ export async function veniceChat(
     venice_parameters: { include_venice_system_prompt: false },
   });
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || "...";
+  return {
+    reply: data.choices?.[0]?.message?.content?.trim() || "...",
+    costUsd: Number(data.cost?.usd ?? 0),
+  };
 }
 
 const EXPLICIT_NEGATIVE =

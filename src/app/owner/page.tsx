@@ -47,6 +47,12 @@ export default function OwnerLogin() {
               Signed in. Unlimited chat and images, no wallet needed, for 24 hours.
             </p>
             <Link
+              href="/owner/dashboard"
+              className="rounded-full bg-amber-400 px-6 py-3 text-sm font-bold text-black transition hover:bg-amber-300"
+            >
+              Profit Dashboard
+            </Link>
+            <Link
               href="/gnomes"
               className="rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400"
             >

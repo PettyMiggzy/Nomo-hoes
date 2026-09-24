@@ -9,6 +9,7 @@ import {
   refundGuestMessage,
 } from "@/lib/credits";
 import { veniceChat } from "@/lib/venice";
+import { logUsage } from "@/lib/usage";
 
 export const runtime = "nodejs";
 
@@ -60,7 +61,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "guest_limit" }, { status: 403 });
     }
     try {
-      const reply = await veniceChat(gnome.persona, trimmed);
+      const { reply, costUsd } = await veniceChat(gnome.persona, trimmed);
+      await logUsage(null, "chat", false, costUsd);
       return NextResponse.json({ reply, guestRemaining: remaining });
     } catch (e) {
       console.error("Venice chat error", e);
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
     }
   }
 
+  let wasFree = true;
   if (!session.owner) {
     const gate = await canSendMessage(session.wallet);
     if (!gate.ok) {
@@ -81,15 +84,18 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+    wasFree = (await usageStats(session.wallet)).freeMessagesRemaining > 0;
   }
 
-  let reply: string;
+  let reply: string, costUsd: number;
   try {
-    reply = await veniceChat(gnome.persona, trimmed);
+    ({ reply, costUsd } = await veniceChat(gnome.persona, trimmed));
   } catch (e) {
     console.error("Venice chat error", e);
     return NextResponse.json({ reply: `${gnome.name} got distracted. Try again in a sec.` });
   }
+
+  await logUsage(session.wallet, "chat", !wasFree && !session.owner, costUsd);
 
   if (session.owner) return NextResponse.json({ reply });
 

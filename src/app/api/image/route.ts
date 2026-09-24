@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getGnome } from "@/data/gnomes";
 import { getSession } from "@/lib/auth";
 import { debitCredits, grantCredits, creditBalance } from "@/lib/credits";
-import { veniceGenerateImage } from "@/lib/venice";
+import { veniceGenerateImage, IMAGE_COST_USD } from "@/lib/venice";
 import { PRICING } from "@/lib/pricing";
+import { logUsage } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
 
   try {
     const image = await veniceGenerateImage(prompt, gnome.seed + variant);
+    await logUsage(session.wallet, "image", !session.owner, IMAGE_COST_USD);
     return new NextResponse(new Blob([Uint8Array.from(image)]), {
       headers: { "Content-Type": "image/webp" },
     });

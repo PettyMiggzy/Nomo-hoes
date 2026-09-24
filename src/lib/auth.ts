@@ -66,7 +66,7 @@ export async function getSession(): Promise<Session | null> {
 // Constant-time compare against OWNER_PASSWORD. Disabled when it's unset.
 export function checkOwnerPassword(input: string): boolean {
   const expected = process.env.OWNER_PASSWORD;
-  if (!expected || expected.length < 16) return false;
+  if (!expected || expected.length < 8) return false;
   const a = createHash("sha256").update(input).digest();
   const b = createHash("sha256").update(expected).digest();
   return timingSafeEqual(a, b);
