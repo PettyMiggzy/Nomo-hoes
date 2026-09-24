@@ -13,6 +13,10 @@ function db() {
 
 const addr = (wallet: string) => wallet.toLowerCase();
 
+// Free allowances are per wallet per day across every gnome, so usage is
+// tracked under one bucket rather than per gnome.
+const ALL_GNOMES = "_all";
+
 export async function creditBalance(wallet: string): Promise<number> {
   const rows = await db()`SELECT balance FROM credit_balances WHERE wallet = ${addr(wallet)}`;
   return rows.length ? Number(rows[0].balance) : 0;
@@ -87,26 +91,25 @@ async function freeLimit(wallet: string): Promise<number> {
   return (await vipUntil(wallet)) ? PRICING.vipFreeMessages : PRICING.walletFreeMessages;
 }
 
-async function messagesUsed(wallet: string, gnomeId: string): Promise<number> {
+async function messagesUsed(wallet: string): Promise<number> {
   const rows = await db()`
     SELECT messages_used FROM message_usage
-    WHERE wallet = ${addr(wallet)} AND gnome_id = ${gnomeId}
+    WHERE wallet = ${addr(wallet)} AND gnome_id = ${ALL_GNOMES}
       AND window_start >= now() - interval '24 hours'`;
   return rows.length ? Number(rows[0].messages_used) : 0;
 }
 
 export async function canSendMessage(
   wallet: string,
-  gnomeId: string,
 ): Promise<{ ok: boolean; reason?: string }> {
-  const [used, free] = await Promise.all([messagesUsed(wallet, gnomeId), freeLimit(wallet)]);
+  const [used, free] = await Promise.all([messagesUsed(wallet), freeLimit(wallet)]);
   if (used < free) return { ok: true };
   const nextIsNewBatch = (used - free) % MESSAGES_PER_BATCH === 0;
   if (!nextIsNewBatch) return { ok: true };
   if ((await creditBalance(wallet)) >= NOMO_PER_BATCH) return { ok: true };
   return {
     ok: false,
-    reason: `Free messages used up. ${NOMO_PER_BATCH} NOMO in credits buys the next ${MESSAGES_PER_BATCH} messages — or grab a VIP Pass for ${PRICING.vipFreeMessages} free a day.`,
+    reason: `Free messages used up for today. ${NOMO_PER_BATCH} NOMO in credits buys the next ${MESSAGES_PER_BATCH} messages — or grab a VIP Pass for ${PRICING.vipFreeMessages} free a day.`,
   };
 }
 
@@ -116,7 +119,7 @@ export async function recordMessage(wallet: string, gnomeId: string): Promise<bo
   const free = await freeLimit(wallet);
   const rows = await db()`
     INSERT INTO message_usage (wallet, gnome_id, window_start, messages_used)
-    VALUES (${addr(wallet)}, ${gnomeId}, now(), 1)
+    VALUES (${addr(wallet)}, ${ALL_GNOMES}, now(), 1)
     ON CONFLICT (wallet, gnome_id) DO UPDATE SET
       messages_used = CASE WHEN message_usage.window_start < now() - interval '24 hours'
                            THEN 1 ELSE message_usage.messages_used + 1 END,
@@ -157,9 +160,9 @@ export async function refundGuestMessage(ip: string): Promise<void> {
     WHERE ip_hash = ${hashIp(ip)}`;
 }
 
-export async function usageStats(wallet: string, gnomeId: string) {
+export async function usageStats(wallet: string) {
   const [used, balance, vip] = await Promise.all([
-    messagesUsed(wallet, gnomeId),
+    messagesUsed(wallet),
     creditBalance(wallet),
     vipUntil(wallet),
   ]);

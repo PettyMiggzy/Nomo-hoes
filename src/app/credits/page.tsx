@@ -164,7 +164,7 @@ export default function CreditsPage() {
                 )}
               </div>
               <p className="text-sm text-neutral-300">
-                {p.vipFreeMessages} free messages a day with every gnome, plus a VIP badge, for {p.vipDays} days.
+                {p.vipFreeMessages} free messages a day across every gnome, plus a VIP badge, for {p.vipDays} days.
                 Buying again adds {p.vipDays} more days.
               </p>
               <div className="grid grid-cols-2 gap-2">

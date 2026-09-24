@@ -70,13 +70,13 @@ export async function POST(request: Request) {
   }
 
   if (!session.owner) {
-    const gate = await canSendMessage(session.wallet, gnome.id);
+    const gate = await canSendMessage(session.wallet);
     if (!gate.ok) {
       return NextResponse.json(
         {
           error: "insufficient_credits",
           details: gate.reason,
-          stats: await usageStats(session.wallet, gnome.id),
+          stats: await usageStats(session.wallet),
         },
         { status: 403 },
       );
@@ -94,5 +94,5 @@ export async function POST(request: Request) {
   if (session.owner) return NextResponse.json({ reply });
 
   await recordMessage(session.wallet, gnome.id);
-  return NextResponse.json({ reply, stats: await usageStats(session.wallet, gnome.id) });
+  return NextResponse.json({ reply, stats: await usageStats(session.wallet) });
 }
