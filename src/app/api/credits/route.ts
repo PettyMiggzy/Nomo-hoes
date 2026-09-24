@@ -1,21 +1,38 @@
 import { NextResponse } from "next/server";
 import { isHash } from "viem";
 import { getSession, CHAIN_ID } from "@/lib/auth";
-import { creditBalance, grantCredits } from "@/lib/credits";
-import { paymentConfig, verifyNomoPayment, PaymentError } from "@/lib/payments";
+import { creditBalance, grantCredits, vipUntil } from "@/lib/credits";
+import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
+import { PRICING } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  const { treasury, token } = paymentConfig();
+  const cfg = paymentConfig();
+  const [balance, vip] = session.owner
+    ? [null, null]
+    : await Promise.all([creditBalance(session.wallet), vipUntil(session.wallet)]);
   return NextResponse.json({
-    creditsAvailable: session.owner ? null : await creditBalance(session.wallet),
+    creditsAvailable: balance,
+    vipUntil: vip?.toISOString() ?? null,
     owner: session.owner,
-    treasury,
-    token,
+    treasury: cfg.treasury,
+    token: cfg.token,
+    nohoesToken: cfg.nohoesToken,
+    burnAddress: cfg.burnAddress,
     chainId: CHAIN_ID,
+    pricing: {
+      packs: PRICING.packs,
+      vipPriceNomo: PRICING.vipPriceNomo,
+      vipPriceNohoes: PRICING.vipPriceNohoes,
+      vipDays: PRICING.vipDays,
+      vipFreeMessages: PRICING.vipFreeMessages,
+      nomoPerBatch: PRICING.nomoPerBatch,
+      messagesPerBatch: PRICING.messagesPerBatch,
+      nomoPerImage: PRICING.nomoPerImage,
+    },
   });
 }
 
@@ -34,19 +51,21 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
-
   if (!body.txHash || !isHash(body.txHash)) {
     return NextResponse.json({ error: "Missing or invalid txHash" }, { status: 400 });
   }
 
+  const { treasury, token } = paymentConfig();
+  if (!treasury || !token) {
+    return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });
+  }
+
   let amount: number;
   try {
-    amount = await verifyNomoPayment(body.txHash, session.wallet);
+    amount = await verifyTokenTransfer(body.txHash, session.wallet, token, treasury);
   } catch (e) {
-    if (e instanceof PaymentError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
-    console.error("verifyNomoPayment error", e);
+    if (e instanceof PaymentError) return NextResponse.json({ error: e.message }, { status: e.status });
+    console.error("verifyTokenTransfer error", e);
     return NextResponse.json({ error: "Could not verify payment" }, { status: 502 });
   }
 
@@ -54,6 +73,5 @@ export async function POST(request: Request) {
   if (balance === null) {
     return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
   }
-
   return NextResponse.json({ success: true, credited: amount, creditsAvailable: balance });
 }

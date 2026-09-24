@@ -7,30 +7,55 @@ import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 
 type Config = {
   creditsAvailable: number | null;
+  vipUntil: string | null;
   owner: boolean;
   treasury: `0x${string}` | null;
   token: `0x${string}` | null;
+  nohoesToken: `0x${string}` | null;
+  burnAddress: `0x${string}`;
   chainId: number;
+  pricing: {
+    packs: { name: string; nomo: number }[];
+    vipPriceNomo: number;
+    vipPriceNohoes: number;
+    vipDays: number;
+    vipFreeMessages: number;
+    nomoPerBatch: number;
+    messagesPerBatch: number;
+    nomoPerImage: number;
+  };
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 });
 
 export default function CreditsPage() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
-  const [amount, setAmount] = useState(5);
+  const [amount, setAmount] = useState(1);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const onConnected = async (s: SessionInfo) => {
-    setSession(s);
+  const loadConfig = async () => {
     const res = await fetch("/api/credits");
-    if (res.ok) setConfig(await res.json());
+    if (!res.ok) return;
+    const c: Config = await res.json();
+    setConfig(c);
+    setAmount(c.pricing.packs[0]?.nomo ?? 1);
   };
 
-  const buy = async () => {
+  // Sends `amount` of `token` to `to` from the connected wallet, then polls
+  // `endpoint` with the tx hash until the server confirms it on chain.
+  const sendAndRedeem = async (
+    token: `0x${string}`,
+    to: `0x${string}`,
+    tokens: number,
+    endpoint: string,
+    extra: Record<string, string>,
+    onDone: (data: Record<string, unknown>) => string,
+  ) => {
     const eth = window.ethereum;
-    if (!config?.treasury || !config.token || !session || !eth) return;
+    if (!config || !session || !eth) return;
     setPending(true);
     setStatus(null);
     try {
@@ -38,13 +63,9 @@ export default function CreditsPage() {
         method: "wallet_switchEthereumChain",
         params: [{ chainId: `0x${config.chainId.toString(16)}` }],
       });
-
       const decimalsHex = (await eth.request({
         method: "eth_call",
-        params: [
-          { to: config.token, data: encodeFunctionData({ abi: erc20Abi, functionName: "decimals" }) },
-          "latest",
-        ],
+        params: [{ to: token, data: encodeFunctionData({ abi: erc20Abi, functionName: "decimals" }) }, "latest"],
       })) as Hex;
       const decimals = decodeFunctionResult({ abi: erc20Abi, functionName: "decimals", data: decimalsHex });
 
@@ -54,11 +75,11 @@ export default function CreditsPage() {
         params: [
           {
             from: session.wallet,
-            to: config.token,
+            to: token,
             data: encodeFunctionData({
               abi: erc20Abi,
               functionName: "transfer",
-              args: [config.treasury, parseUnits(String(amount), decimals)],
+              args: [to, parseUnits(String(tokens), decimals)],
             }),
           },
         ],
@@ -66,19 +87,19 @@ export default function CreditsPage() {
 
       setStatus("Waiting for the transfer to confirm on chain...");
       for (let attempt = 0; attempt < 40; attempt++) {
-        const res = await fetch("/api/credits", {
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ txHash }),
+          body: JSON.stringify({ txHash, ...extra }),
         });
         const data = await res.json();
         if (res.ok) {
-          setStatus(`Credited ${data.credited} NOMO. Balance: ${Number(data.creditsAvailable).toFixed(2)}.`);
-          setConfig((c) => (c ? { ...c, creditsAvailable: data.creditsAvailable } : c));
+          setStatus(onDone(data));
+          await loadConfig();
           return;
         }
         if (res.status !== 409 || data.error === "This transaction was already redeemed") {
-          setStatus(data.error ?? "Purchase failed");
+          setStatus(data.error ?? "Something went wrong");
           return;
         }
         await sleep(3000);
@@ -91,6 +112,13 @@ export default function CreditsPage() {
     }
   };
 
+  const p = config?.pricing;
+  const perks = (nomo: number) =>
+    p
+      ? `${fmt(Math.floor((nomo / p.nomoPerBatch) * p.messagesPerBatch))} msgs / ${fmt(Math.floor(nomo / p.nomoPerImage))} pics`
+      : "";
+  const vipActive = config?.vipUntil ? new Date(config.vipUntil) : null;
+
   return (
     <div className="flex flex-1 flex-col">
       <nav className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
@@ -102,78 +130,132 @@ export default function CreditsPage() {
         </Link>
       </nav>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center px-6 pb-24 pt-4 text-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-pink-400">
-          Credits
-        </span>
-        <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Buy NOMO Credits</h1>
-        <p className="mx-auto mt-3 max-w-sm text-balance text-neutral-400">
-          10 free messages per gnome, per day. After that: 0.2 NOMO per 20 messages, or 0.5 NOMO
-          per unlocked image. Credits = the NOMO you send, 1:1.
-        </p>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-24 pt-4 text-center">
+        <div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-pink-400">
+            Credits &amp; VIP
+          </span>
+          <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Keep the Burrow Open</h1>
+        </div>
 
-        <div className="mt-8 flex w-full flex-col items-center gap-4 rounded-2xl border border-white/10 bg-neutral-900/60 p-6">
-          {!session ? (
-            <>
-              <p className="text-sm text-neutral-400">Connect your wallet to buy credits.</p>
-              <WalletConnect onConnected={onConnected} />
-            </>
-          ) : session.owner ? (
-            <p className="text-sm text-pink-400">Owner access — you have unlimited use.</p>
-          ) : !config?.treasury ? (
-            <p className="text-sm text-neutral-400">Payments aren&apos;t open yet. Check back soon.</p>
-          ) : (
-            <>
+        {!session ? (
+          <div className="flex w-full flex-col items-center gap-3 rounded-2xl border border-white/10 bg-neutral-900/60 p-6">
+            <p className="text-sm text-neutral-400">Connect your wallet to get VIP or buy credits.</p>
+            <WalletConnect
+              onConnected={(s) => {
+                setSession(s);
+                loadConfig();
+              }}
+            />
+          </div>
+        ) : session.owner ? (
+          <p className="text-sm text-pink-400">Owner access — you have unlimited use.</p>
+        ) : !config || !p ? (
+          <p className="text-sm text-neutral-400">Loading...</p>
+        ) : (
+          <>
+            <section className="flex w-full flex-col gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/5 p-5 text-left">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-amber-400">VIP Pass</p>
+                {vipActive && (
+                  <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                    Active until {vipActive.toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-neutral-300">
+                {p.vipFreeMessages} free messages a day with every gnome, plus a VIP badge, for {p.vipDays} days.
+                Buying again adds {p.vipDays} more days.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  disabled={pending || !config.treasury || !config.token}
+                  onClick={() =>
+                    sendAndRedeem(config.token!, config.treasury!, p.vipPriceNomo, "/api/vip", { method: "nomo" }, (d) =>
+                      `VIP active until ${new Date(String(d.vipUntil)).toLocaleDateString()}.`,
+                    )
+                  }
+                  className="rounded-xl bg-amber-400 px-3 py-3 text-sm font-black text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Pay {fmt(p.vipPriceNomo)} NOMO
+                </button>
+                <button
+                  disabled={pending || !config.nohoesToken}
+                  onClick={() =>
+                    sendAndRedeem(config.nohoesToken!, config.burnAddress, p.vipPriceNohoes, "/api/vip", { method: "burn" }, (d) =>
+                      `Burned. VIP active until ${new Date(String(d.vipUntil)).toLocaleDateString()}.`,
+                    )
+                  }
+                  className="rounded-xl border border-amber-400/60 px-3 py-3 text-sm font-black text-amber-300 transition hover:bg-amber-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Burn {fmt(p.vipPriceNohoes)} $NOHOES
+                </button>
+              </div>
+              {!config.nohoesToken && (
+                <p className="text-[11px] text-neutral-500">$NOHOES burn opens once the token launches.</p>
+              )}
+            </section>
+
+            <section className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-neutral-900/60 p-5">
+              <p className="text-left text-xs font-bold uppercase tracking-widest text-pink-400">Credit Packs</p>
               {config.creditsAvailable !== null && (
-                <p className="text-sm text-neutral-400">
-                  Balance: <span className="font-bold text-white">{config.creditsAvailable.toFixed(2)} NOMO</span>
+                <p className="text-left text-sm text-neutral-400">
+                  Balance: <span className="font-bold text-white">{fmt(config.creditsAvailable)} NOMO</span>
                 </p>
               )}
-              <div className="grid w-full grid-cols-2 gap-2">
-                {[
-                  { name: "Gardener", nomo: 5, note: "500 msgs / 10 pics" },
-                  { name: "Hollow Lord", nomo: 25, note: "2,500 msgs / 50 pics" },
-                ].map((p) => (
+              <div className="grid grid-cols-2 gap-2">
+                {p.packs.map((pack) => (
                   <button
-                    key={p.name}
-                    onClick={() => setAmount(p.nomo)}
+                    key={pack.name}
+                    onClick={() => setAmount(pack.nomo)}
                     className={`rounded-xl border p-3 text-left transition ${
-                      amount === p.nomo ? "border-pink-500 bg-pink-500/10" : "border-white/10 hover:bg-white/5"
+                      amount === pack.nomo ? "border-pink-500 bg-pink-500/10" : "border-white/10 hover:bg-white/5"
                     }`}
                   >
-                    <p className="text-xs font-bold text-pink-400">{p.name}</p>
-                    <p className="text-lg font-black text-white">{p.nomo} NOMO</p>
-                    <p className="text-[11px] text-neutral-500">{p.note}</p>
+                    <p className="text-xs font-bold text-pink-400">{pack.name}</p>
+                    <p className="text-lg font-black text-white">{fmt(pack.nomo)} NOMO</p>
+                    <p className="text-[11px] text-neutral-500">{perks(pack.nomo)}</p>
                   </button>
                 ))}
               </div>
-              <label className="flex w-full flex-col gap-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Amount (NOMO)
+              <label className="flex flex-col gap-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Custom amount (NOMO)
                 <input
                   type="number"
-                  min={1}
-                  step={1}
+                  min={0.01}
+                  step={0.01}
                   value={amount}
-                  onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))}
+                  onChange={(e) => setAmount(Math.max(0.01, Number(e.target.value)))}
                   className="rounded-lg bg-white/5 px-4 py-2 text-base font-bold text-white focus:outline-none focus:ring-1 focus:ring-pink-500"
                 />
               </label>
               <button
-                onClick={buy}
-                disabled={pending}
-                className="w-full rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={pending || !config.treasury || !config.token}
+                onClick={() =>
+                  sendAndRedeem(config.token!, config.treasury!, amount, "/api/credits", {}, (d) =>
+                    `Credited ${fmt(Number(d.credited))} NOMO. Balance: ${fmt(Number(d.creditsAvailable))}.`,
+                  )
+                }
+                className="w-full rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {pending ? "Processing..." : `Send ${amount} NOMO`}
+                {pending ? "Processing..." : `Send ${fmt(amount)} NOMO`}
               </button>
-              {status && <p className="break-all text-xs text-neutral-300">{status}</p>}
-            </>
-          )}
-        </div>
+              {!config.treasury && (
+                <p className="text-[11px] text-neutral-500">NOMO payments open soon.</p>
+              )}
+            </section>
+
+            {status && <p className="break-all text-xs text-neutral-300">{status}</p>}
+          </>
+        )}
       </main>
 
       <footer className="border-t border-white/10 px-6 py-8">
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 text-center text-xs text-neutral-500">
-          <p>18+ only. NOMO credits are non-refundable and have no cash value outside this platform.</p>
+          <p>
+            18+ only. Credits and VIP passes are non-refundable and have no cash value. Burned $NOHOES is sent
+            to the dead address and gone for good.
+          </p>
         </div>
       </footer>
     </div>

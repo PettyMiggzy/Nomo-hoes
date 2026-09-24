@@ -3,11 +3,12 @@ import { getGnome } from "@/data/gnomes";
 import { getSession } from "@/lib/auth";
 import { debitCredits, grantCredits, creditBalance } from "@/lib/credits";
 import { veniceGenerateImage } from "@/lib/venice";
+import { PRICING } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const NOMO_PER_IMAGE = Number(process.env.NOMO_PER_IMAGE ?? 0.5);
+const NOMO_PER_IMAGE = PRICING.nomoPerImage;
 const MAX_SCENE_LEN = 300;
 
 export async function POST(request: Request) {

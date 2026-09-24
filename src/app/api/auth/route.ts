@@ -34,20 +34,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bad signature" }, { status: 401 });
   }
 
-  const minNomo = Number(process.env.MIN_NOMO ?? 1000);
-  let balance: number;
-  try {
-    balance = await nomoBalance(addr);
-  } catch (e) {
-    console.error("nomoBalance error", e);
-    return NextResponse.json({ error: "Could not read NOMO balance" }, { status: 502 });
+  // Optional holding gate; 0 (the default) lets any wallet sign in without an RPC call.
+  const minNomo = Number(process.env.MIN_NOMO ?? 0);
+  if (minNomo > 0) {
+    let balance: number;
+    try {
+      balance = await nomoBalance(addr);
+    } catch (e) {
+      console.error("nomoBalance error", e);
+      return NextResponse.json({ error: "Could not read NOMO balance" }, { status: 502 });
+    }
+    if (balance < minNomo) {
+      return NextResponse.json({ error: "Insufficient NOMO", balance, required: minNomo }, { status: 403 });
+    }
   }
 
-  if (balance < minNomo) {
-    return NextResponse.json({ error: "Insufficient NOMO", balance, required: minNomo }, { status: 403 });
-  }
-
-  const res = NextResponse.json({ wallet: addr.toLowerCase(), balance });
+  const res = NextResponse.json({ wallet: addr.toLowerCase() });
   res.cookies.set(SESSION_COOKIE, signSession(addr), sessionCookieOptions);
   return res;
 }

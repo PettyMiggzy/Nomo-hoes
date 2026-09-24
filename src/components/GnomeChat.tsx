@@ -9,6 +9,7 @@ type Message = { role: "user" | "assistant"; content: string; image?: string };
 type Stats = {
   freeMessagesRemaining: number;
   creditsAvailable: number;
+  vipUntil: string | null;
 };
 
 const MAX_LEN = 500;
@@ -125,10 +126,12 @@ export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFre
     ? "Owner · unlimited"
     : session
       ? stats
-        ? stats.freeMessagesRemaining > 0
-          ? `${stats.freeMessagesRemaining} free msgs left today`
-          : `${stats.creditsAvailable.toFixed(2)} NOMO credits`
-        : "10 free msgs/day with wallet"
+        ? `${stats.vipUntil ? "VIP · " : ""}${
+            stats.freeMessagesRemaining > 0
+              ? `${stats.freeMessagesRemaining} free msgs left today`
+              : `${stats.creditsAvailable.toFixed(2)} NOMO credits`
+          }`
+        : "Free daily msgs with your wallet"
       : `${guestRemaining} free msgs left · no wallet needed`;
 
   return (
@@ -164,7 +167,7 @@ export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFre
         )}
         {gate === "pic" && (
           <div className="flex flex-col items-center gap-3 self-center rounded-2xl border border-pink-500/30 bg-pink-500/10 px-4 py-4 text-center text-xs text-pink-200">
-            <p>*{gnome.name} winks* Private pics are for wallet holders. Connect to unlock them.</p>
+            <p>*{gnome.name} winks* Private pics need a connected wallet. Connect to unlock them.</p>
             <WalletConnect
               onConnected={(s) => {
                 setSession(s);
@@ -181,8 +184,8 @@ export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFre
         {gate === "guest" && (
           <div className="flex flex-col items-center gap-3 self-center rounded-2xl border border-pink-500/30 bg-pink-500/10 px-4 py-4 text-center text-xs text-pink-200">
             <p>
-              *{gnome.name} pouts* That&apos;s all your free messages for today. Connect a wallet
-              holding NOMO to keep going — 10 free a day per gnome, then pennies.
+              *{gnome.name} pouts* That&apos;s all your free messages for today. Connect a wallet to
+              keep going — more free messages daily, and VIP gets the most.
             </p>
             <WalletConnect
               onConnected={(s) => {

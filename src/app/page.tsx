@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { GNOMES } from "@/data/gnomes";
+import { PRICING, packPerks, fmt } from "@/lib/pricing";
 
 const SOCIALS = [
   { label: "X / Twitter", href: "#", handle: "@nomohoes" },
@@ -9,45 +10,57 @@ const SOCIALS = [
 
 const TOKEN_SHEET = [
   { label: "Chain", value: "Robinhood (4663)" },
-  { label: "Token", value: "$NOMO" },
-  { label: "Access", value: "1,000 NOMO" },
-  { label: "Per gnome", value: "10 free msgs/day" },
+  { label: "Pay with", value: "$NOMO" },
+  { label: "VIP Pass", value: `${fmt(PRICING.vipPriceNomo)} NOMO or burn ${fmt(PRICING.vipPriceNohoes)} $NOHOES` },
+  { label: "$NOHOES supply", value: "69" },
 ];
 
 const FEATURED = GNOMES.slice(0, 8);
+
+const [gardener, lord] = PRICING.packs;
+const gardenerPerks = packPerks(gardener.nomo);
+const lordPerks = packPerks(lord.nomo);
 
 const PACKAGES = [
   {
     name: "Free Taste",
     price: "Free",
     detail: "No wallet needed",
-    perks: ["5 free messages a day", "Chat with any gnome", "Peek at 18+ teasers"],
+    perks: [`${PRICING.guestFreeMessages} free messages a day`, "Chat with any gnome", "Peek at 18+ teasers"],
     cta: { label: "Start Chatting", href: "/gnomes" },
     featured: false,
+    vip: false,
   },
   {
-    name: "Holder",
-    price: "1,000 NOMO",
-    detail: "Just hold it — nothing spent",
-    perks: ["10 free messages a day with every gnome", "240 free messages a day total", "Unlocks paid packs"],
-    cta: { label: "Meet the Gnomes", href: "/gnomes" },
+    name: "VIP Pass",
+    price: `${fmt(PRICING.vipPriceNomo)} NOMO`,
+    detail: `or burn ${fmt(PRICING.vipPriceNohoes)} $NOHOES · ${PRICING.vipDays} days`,
+    perks: [
+      `${PRICING.vipFreeMessages} free messages a day with every gnome`,
+      `${fmt(PRICING.vipFreeMessages * GNOMES.length)} free messages a day total`,
+      "VIP badge",
+    ],
+    cta: { label: "Get VIP", href: "/credits" },
     featured: false,
+    vip: true,
   },
   {
-    name: "Gardener",
-    price: "5 NOMO",
+    name: gardener.name,
+    price: `${fmt(gardener.nomo)} NOMO`,
     detail: "Most popular",
-    perks: ["500 extra messages", "or 10 custom 18+ pics", "Credits never expire"],
+    perks: [`${fmt(gardenerPerks.messages)} extra messages`, `or ${fmt(gardenerPerks.pics)} custom 18+ pics`, "Credits never expire"],
     cta: { label: "Buy Credits", href: "/credits" },
     featured: true,
+    vip: false,
   },
   {
-    name: "Hollow Lord",
-    price: "25 NOMO",
+    name: lord.name,
+    price: `${fmt(lord.nomo)} NOMO`,
     detail: "For the committed",
-    perks: ["2,500 extra messages", "or 50 custom 18+ pics", "Credits never expire"],
+    perks: [`${fmt(lordPerks.messages)} extra messages`, `or ${fmt(lordPerks.pics)} custom 18+ pics`, "Credits never expire"],
     cta: { label: "Buy Credits", href: "/credits" },
     featured: false,
+    vip: false,
   },
 ];
 
@@ -94,7 +107,7 @@ export default function Home() {
             <h1 className="text-4xl font-black tracking-tight sm:text-6xl">NOMO HOES</h1>
             <p className="mx-auto max-w-xl text-balance text-lg text-neutral-400">
               24 gnome companions. 24 personalities. Start chatting free —
-              no wallet, no signup. Hold $NOMO for more, and see what
+              no wallet, no signup. Grab a VIP Pass for more, and see what
               they&apos;re hiding. 18+ only.
             </p>
           </div>
@@ -131,10 +144,12 @@ export default function Home() {
                 className={`flex flex-col rounded-2xl border p-5 text-left ${
                   p.featured
                     ? "border-pink-500/60 bg-pink-500/10 shadow-[0_0_40px_-12px_rgba(236,72,153,0.6)]"
-                    : "border-white/10 bg-neutral-900/60"
+                    : p.vip
+                      ? "border-amber-400/50 bg-amber-400/5"
+                      : "border-white/10 bg-neutral-900/60"
                 }`}
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-pink-400">{p.name}</p>
+                <p className={`text-xs font-bold uppercase tracking-widest ${p.vip ? "text-amber-400" : "text-pink-400"}`}>{p.name}</p>
                 <p className="mt-2 text-2xl font-black text-white">{p.price}</p>
                 <p className="text-xs text-neutral-500">{p.detail}</p>
                 <ul className="mt-4 flex-1 space-y-2 text-sm text-neutral-300">

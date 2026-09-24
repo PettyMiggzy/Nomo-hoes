@@ -3,6 +3,8 @@ import { publicClient } from "@/lib/auth";
 
 const MIN_CONFIRMATIONS = BigInt(process.env.PAYMENT_MIN_CONFIRMATIONS ?? 2);
 
+export const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+
 export class PaymentError extends Error {
   constructor(
     message: string,
@@ -12,21 +14,25 @@ export class PaymentError extends Error {
   }
 }
 
+const envAddress = (v: string | undefined) => (v && isAddress(v) ? v : null);
+
 export function paymentConfig() {
-  const treasury = process.env.TREASURY_ADDRESS;
-  const token = process.env.NOMO_CONTRACT;
   return {
-    treasury: treasury && isAddress(treasury) ? treasury : null,
-    token: token && isAddress(token) ? token : null,
+    treasury: envAddress(process.env.TREASURY_ADDRESS),
+    token: envAddress(process.env.NOMO_CONTRACT),
+    nohoesToken: envAddress(process.env.NOHOES_CONTRACT),
+    burnAddress: BURN_ADDRESS,
   };
 }
 
-// Confirms `txHash` is a successful, confirmed NOMO transfer from `wallet` to
-// the treasury and returns the amount sent in whole NOMO.
-export async function verifyNomoPayment(txHash: Hash, wallet: string): Promise<number> {
-  const { treasury, token } = paymentConfig();
-  if (!treasury || !token) throw new PaymentError("Payments are not configured yet", 503);
-
+// Confirms `txHash` is a successful, confirmed transfer of `token` from
+// `wallet` to `to`, and returns the total amount moved in whole tokens.
+export async function verifyTokenTransfer(
+  txHash: Hash,
+  wallet: string,
+  token: string,
+  to: string,
+): Promise<number> {
   const client = publicClient();
   let receipt;
   try {
@@ -50,7 +56,7 @@ export async function verifyNomoPayment(txHash: Hash, wallet: string): Promise<n
       if (
         ev.eventName === "Transfer" &&
         ev.args.from.toLowerCase() === wallet.toLowerCase() &&
-        ev.args.to.toLowerCase() === treasury.toLowerCase()
+        ev.args.to.toLowerCase() === to.toLowerCase()
       ) {
         total += ev.args.value;
       }
@@ -60,9 +66,13 @@ export async function verifyNomoPayment(txHash: Hash, wallet: string): Promise<n
   }
 
   if (total === BigInt(0)) {
-    throw new PaymentError("No NOMO transfer from your wallet to the treasury in that transaction", 400);
+    throw new PaymentError("No matching transfer from your wallet in that transaction", 400);
   }
 
-  const decimals = await client.readContract({ address: token, abi: erc20Abi, functionName: "decimals" });
+  const decimals = await client.readContract({
+    address: token as `0x${string}`,
+    abi: erc20Abi,
+    functionName: "decimals",
+  });
   return Number(formatUnits(total, decimals));
 }

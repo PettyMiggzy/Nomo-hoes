@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { GNOMES, getGnome } from "@/data/gnomes";
-import { GUEST_FREE_MESSAGES } from "@/lib/credits";
+import { PRICING } from "@/lib/pricing";
 import GnomeChat from "@/components/GnomeChat";
 import NsfwTeaser from "@/components/NsfwTeaser";
 import GnomeAd from "@/components/GnomeAd";
@@ -73,7 +73,7 @@ export default async function GnomePage({
             {teaser(1)}
             {teaser(2)}
           </aside>
-          <GnomeChat gnome={gnome} guestFree={GUEST_FREE_MESSAGES} />
+          <GnomeChat gnome={gnome} guestFree={PRICING.guestFreeMessages} />
           <aside className="hidden flex-col gap-4 lg:sticky lg:top-6 lg:flex">
             <GnomeAd gnomes={ads} />
             <NomoAd />
