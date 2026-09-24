@@ -24,7 +24,9 @@ export async function GET() {
     burnAddress: cfg.burnAddress,
     chainId: CHAIN_ID,
     chainName: "Robinhood Chain",
-    rpcUrl: process.env.ROBINHOOD_RPC ?? null,
+    // Public endpoint for the wallet's own use (wallet_addEthereumChain) --
+    // never the paid/keyed ROBINHOOD_RPC we use server-side to verify payments.
+    rpcUrl: "https://rpc.mainnet.chain.robinhood.com",
     explorerUrl: "https://robinhoodchain.blockscout.com",
     pricing: {
       packs: PRICING.packs,
