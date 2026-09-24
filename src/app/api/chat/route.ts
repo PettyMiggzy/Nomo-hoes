@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const GROQ_MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
 const MAX_HISTORY = 12;
 const MAX_MESSAGE_LEN = 500;
 
@@ -19,13 +18,40 @@ Keep replies short (2-4 sentences), punchy, and in character. This is a comedy b
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+type Provider = {
+  name: string;
+  endpoint: string;
+  apiKey: string;
+  model: string;
+};
+
+function resolveProvider(): Provider | null {
+  if (process.env.GROQ_API_KEY) {
+    return {
+      name: "groq",
+      endpoint: "https://api.groq.com/openai/v1/chat/completions",
+      apiKey: process.env.GROQ_API_KEY,
+      model: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
+    };
+  }
+  if (process.env.VENICE_API_KEY) {
+    return {
+      name: "venice",
+      endpoint: "https://api.venice.ai/api/v1/chat/completions",
+      apiKey: process.env.VENICE_API_KEY,
+      model: process.env.VENICE_MODEL ?? "zai-org-glm-4.7-flash",
+    };
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
+  const provider = resolveProvider();
+  if (!provider) {
     return NextResponse.json(
       {
         reply:
-          "Bunkie's phone privileges got revoked (no GROQ_API_KEY configured on the server yet).",
+          "Bunkie's phone privileges got revoked (no GROQ_API_KEY or VENICE_API_KEY configured on the server yet).",
       },
       { status: 200 },
     );
@@ -53,14 +79,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No message provided" }, { status: 400 });
   }
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const res = await fetch(provider.endpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${provider.apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: GROQ_MODEL,
+      model: provider.model,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...trimmed],
       max_tokens: 200,
       temperature: 0.9,
@@ -69,7 +95,7 @@ export async function POST(request: Request) {
 
   if (!res.ok) {
     const detail = await res.text();
-    console.error("Groq API error", res.status, detail);
+    console.error(`${provider.name} API error`, res.status, detail);
     return NextResponse.json(
       { reply: "Bunkie got dragged off to solitary. Try again in a sec." },
       { status: 200 },

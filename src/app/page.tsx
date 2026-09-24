@@ -59,6 +59,7 @@ export default function Home() {
               alt="$NOHOES mascot booking photo"
               fill
               priority
+              sizes="(min-width: 640px) 18rem, 14rem"
               className="object-cover"
             />
           </div>
@@ -115,6 +116,7 @@ export default function Home() {
                   src={m.src}
                   alt={m.charge}
                   fill
+                  sizes="(min-width: 768px) 20vw, 33vw"
                   className="object-cover transition duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2 pt-6">

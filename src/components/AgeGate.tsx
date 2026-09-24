@@ -34,6 +34,7 @@ export default function AgeGate() {
             src="/mascot.jpg"
             alt=""
             fill
+            sizes="24rem"
             className="object-cover opacity-40 blur-[2px]"
             priority
           />
