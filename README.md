@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NOMO HOES
 
-## Getting Started
+18+ fictional AI gnome companions on Robinhood Chain, paid for in $NOMO. Part of the NOMO ecosystem (nomosupply.com).
 
-First, run the development server:
+## Live token
+
+$NOHOES is live on Robinhood Chain: `0xfa4934809128c5C0C40a6906Da006246Aad8Bebe` (69 supply, symbol NOHOES).
+
+## Stack
+
+- Next.js (App Router) on Vercel
+- Neon Postgres for credits, usage, and the payment ledger
+- Venice AI for gnome chat and image generation
+- viem for wallet auth and on-chain payment verification
+
+## Local development
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in real values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Key routes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `/gnomes` — the roster; `/gnomes/[id]` — chat with a gnome (free messages, then credits or VIP)
+- `/credits` — buy credit packs or a VIP Pass (pay in NOMO, or burn $NOHOES for VIP)
+- `/owner` — password login for unlimited use with no wallet; `/owner/dashboard` — live revenue vs. Venice cost
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Pricing
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Every price (free-message limits, pack sizes, VIP cost, batch rates) is an env var — see `.env.example` — so it can be retuned without a code change. `src/lib/pricing.ts` is the single source of truth the UI and API routes both read from.
