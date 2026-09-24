@@ -34,6 +34,9 @@ export default function Home() {
           <Link href="/walk-of-hoes" className="hover:text-white">
             Walk of Hoes
           </Link>
+          <Link href="/cellmate" className="hover:text-white">
+            Cellmate
+          </Link>
           {SOCIALS.map((s) => (
             <a key={s.label} href={s.href} className="hover:text-white">
               {s.label}
