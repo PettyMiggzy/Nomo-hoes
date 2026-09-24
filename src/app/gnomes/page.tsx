@@ -6,7 +6,7 @@ import { GNOMES } from "@/data/gnomes";
 export const metadata: Metadata = {
   title: "Meet the Gnomes — NOMO HOES",
   description:
-    "12 fantasy gnome companions, each with their own personality. Chat and unlock art with $NOMO. 18+ fictional AI characters.",
+    "24 fantasy gnome companions, each with their own personality. Chat and unlock art with $NOMO. 18+ fictional AI characters.",
 };
 
 export default function GnomesPage() {
@@ -29,7 +29,7 @@ export default function GnomesPage() {
           Meet the Gnomes
         </h1>
         <p className="mx-auto mt-3 max-w-lg text-balance text-neutral-400">
-          12 fictional companions, 12 personalities. Chat free for a bit, then
+          24 fictional companions, 24 personalities. Chat free for a bit, then
           keep it going with $NOMO. 18+ only — fictional AI characters, not
           real people.
         </p>

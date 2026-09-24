@@ -16,16 +16,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "NOMO HOES — 18+ Gnome Companions",
   description:
-    "12 fictional gnome companions. Chat free, then keep going with $NOMO. 18+ only.",
+    "24 fictional gnome companions. Chat free, then keep going with $NOMO. 18+ only.",
   openGraph: {
     title: "NOMO HOES — 18+ Gnome Companions",
-    description: "12 fictional gnome companions. Chat free, then keep going with $NOMO.",
+    description: "24 fictional gnome companions. Chat free, then keep going with $NOMO.",
     images: ["/gnomes/brambleflower.webp"],
   },
   twitter: {
     card: "summary_large_image",
     title: "NOMO HOES — 18+ Gnome Companions",
-    description: "12 fictional gnome companions. Chat free, then keep going with $NOMO.",
+    description: "24 fictional gnome companions. Chat free, then keep going with $NOMO.",
     images: ["/gnomes/brambleflower.webp"],
   },
 };

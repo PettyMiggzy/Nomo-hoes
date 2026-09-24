@@ -1,42 +1,31 @@
-import { createPublicClient, http, defineChain, verifyMessage, formatUnits } from "viem";
+import { createPublicClient, http, defineChain, verifyMessage, formatUnits, erc20Abi } from "viem";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 export const SESSION_COOKIE = "nomo_session";
+export const OWNER_WALLET = "owner";
 
-export const robinhoodChain = defineChain({
-  id: 4663,
-  name: "Robinhood Chain",
+export const CHAIN_ID = Number(process.env.CHAIN_ID ?? 4663);
+
+const nomoChain = defineChain({
+  id: CHAIN_ID,
+  name: "NOMO Chain",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [process.env.ROBINHOOD_RPC ?? ""] } },
 });
 
-const ERC20 = [
-  {
-    name: "balanceOf",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "a", type: "address" }],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    name: "decimals",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint8" }],
-  },
-] as const;
-
-function client() {
-  return createPublicClient({ chain: robinhoodChain, transport: http() });
+export function publicClient() {
+  if (!process.env.ROBINHOOD_RPC) throw new Error("ROBINHOOD_RPC is not configured");
+  return createPublicClient({ chain: nomoChain, transport: http(process.env.ROBINHOOD_RPC) });
 }
 
 export async function nomoBalance(addr: `0x${string}`): Promise<number> {
   const nomo = process.env.NOMO_CONTRACT as `0x${string}`;
+  const client = publicClient();
   const [raw, dec] = await Promise.all([
-    client().readContract({ address: nomo, abi: ERC20, functionName: "balanceOf", args: [addr] }),
-    client().readContract({ address: nomo, abi: ERC20, functionName: "decimals" }),
+    client.readContract({ address: nomo, abi: erc20Abi, functionName: "balanceOf", args: [addr] }),
+    client.readContract({ address: nomo, abi: erc20Abi, functionName: "decimals" }),
   ]);
   return Number(formatUnits(raw, dec));
 }
@@ -56,18 +45,37 @@ function jwtSecret(): string {
   return secret;
 }
 
-export function signSession(wallet: string): string {
-  return jwt.sign({ wallet: wallet.toLowerCase() }, jwtSecret(), { expiresIn: "24h" });
+export type Session = { wallet: string; owner: boolean };
+
+export function signSession(wallet: string, owner = false): string {
+  return jwt.sign({ wallet: wallet.toLowerCase(), owner }, jwtSecret(), { expiresIn: "24h" });
 }
 
-export async function getSessionWallet(): Promise<string | null> {
+export async function getSession(): Promise<Session | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    const decoded = jwt.verify(token, jwtSecret()) as { wallet: string };
-    return decoded.wallet;
+    const decoded = jwt.verify(token, jwtSecret()) as { wallet: string; owner?: boolean };
+    return { wallet: decoded.wallet, owner: decoded.owner === true };
   } catch {
     return null;
   }
 }
+
+// Constant-time compare against OWNER_PASSWORD. Disabled when it's unset.
+export function checkOwnerPassword(input: string): boolean {
+  const expected = process.env.OWNER_PASSWORD;
+  if (!expected || expected.length < 16) return false;
+  const a = createHash("sha256").update(input).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+export const sessionCookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "lax" as const,
+  maxAge: 60 * 60 * 24,
+  path: "/",
+};

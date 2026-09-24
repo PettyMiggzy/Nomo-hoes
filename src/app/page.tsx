@@ -58,7 +58,7 @@ export default function Home() {
           <div className="space-y-4">
             <h1 className="text-4xl font-black tracking-tight sm:text-6xl">NOMO HOES</h1>
             <p className="mx-auto max-w-xl text-balance text-lg text-neutral-400">
-              12 gnome companions. 12 personalities. Chat free, then keep the
+              24 gnome companions. 24 personalities. Chat free, then keep the
               conversation going with $NOMO. Hold the token, unlock the
               roster. 18+ only.
             </p>
@@ -90,7 +90,7 @@ export default function Home() {
               Featured Gnomes
             </h2>
             <Link href="/gnomes" className="text-sm font-bold text-pink-400 hover:text-pink-300">
-              See all 12 →
+              See all 24 →
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">

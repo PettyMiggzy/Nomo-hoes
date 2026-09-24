@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getGnome } from "@/data/gnomes";
-import { getSessionWallet } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { canSendMessage, recordMessage, usageStats } from "@/lib/credits";
 import { veniceChat } from "@/lib/venice";
 
@@ -12,8 +12,8 @@ const MAX_MESSAGE_LEN = 500;
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export async function POST(request: Request) {
-  const wallet = await getSessionWallet();
-  if (!wallet) {
+  const session = await getSession();
+  if (!session) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
@@ -29,16 +29,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unknown gnome" }, { status: 400 });
   }
 
-  const gate = canSendMessage(wallet, gnome.id);
-  if (!gate.ok) {
-    return NextResponse.json(
-      { error: "insufficient_credits", details: gate.reason, stats: usageStats(wallet, gnome.id) },
-      { status: 403 },
-    );
+  if (!session.owner) {
+    const gate = await canSendMessage(session.wallet, gnome.id);
+    if (!gate.ok) {
+      return NextResponse.json(
+        {
+          error: "insufficient_credits",
+          details: gate.reason,
+          stats: await usageStats(session.wallet, gnome.id),
+        },
+        { status: 403 },
+      );
+    }
   }
 
-  const incoming = Array.isArray(body.messages) ? body.messages : [];
-  const trimmed = incoming
+  const trimmed = (Array.isArray(body.messages) ? body.messages : [])
     .filter(
       (m): m is ChatMessage =>
         !!m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
@@ -50,24 +55,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No message provided" }, { status: 400 });
   }
 
-  if (!process.env.VENICE_API_KEY) {
-    return NextResponse.json(
-      { reply: `${gnome.name} isn't reachable right now (no VENICE_API_KEY configured).` },
-      { status: 200 },
-    );
-  }
-
   let reply: string;
   try {
     reply = await veniceChat(gnome.persona, trimmed);
   } catch (e) {
     console.error("Venice chat error", e);
-    return NextResponse.json(
-      { reply: `${gnome.name} got distracted. Try again in a sec.` },
-      { status: 200 },
-    );
+    return NextResponse.json({ reply: `${gnome.name} got distracted. Try again in a sec.` });
   }
 
-  recordMessage(wallet, gnome.id);
-  return NextResponse.json({ reply, stats: usageStats(wallet, gnome.id) });
+  if (session.owner) return NextResponse.json({ reply });
+
+  await recordMessage(session.wallet, gnome.id);
+  return NextResponse.json({ reply, stats: await usageStats(session.wallet, gnome.id) });
 }

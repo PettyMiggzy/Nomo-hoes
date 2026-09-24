@@ -17,6 +17,7 @@ const MAX_LEN = 500;
 
 export default function GnomeChat({ gnome }: { gnome: Gnome }) {
   const [connected, setConnected] = useState(false);
+  const [owner, setOwner] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: `*looks you over with a grin* Well hello there... I'm ${gnome.name}. ${gnome.tagline}. What brings you my way?` },
   ]);
@@ -69,7 +70,12 @@ export default function GnomeChat({ gnome }: { gnome: Gnome }) {
           <p className="text-sm text-neutral-400">
             Connect your wallet to chat with {gnome.name}. Requires holding NOMO.
           </p>
-          <WalletConnect onConnected={() => setConnected(true)} />
+          <WalletConnect
+            onConnected={(s) => {
+              setConnected(true);
+              setOwner(s.owner);
+            }}
+          />
         </div>
       )}
 
@@ -79,7 +85,8 @@ export default function GnomeChat({ gnome }: { gnome: Gnome }) {
             <p className="text-sm font-bold text-white">{gnome.name}</p>
             <p className="text-xs text-neutral-500">Fictional AI companion · 18+</p>
           </div>
-          {stats && (
+          {owner && <p className="text-right text-[11px] text-pink-400">Owner · unlimited</p>}
+          {!owner && stats && (
             <p className="text-right text-[11px] text-neutral-500">
               {stats.freeMessagesRemaining > 0
                 ? `${stats.freeMessagesRemaining} free msgs left`

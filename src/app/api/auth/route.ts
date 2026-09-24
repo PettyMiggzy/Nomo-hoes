@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
-import { verifyWalletSignature, nomoBalance, signSession, SESSION_COOKIE } from "@/lib/auth";
+import {
+  verifyWalletSignature,
+  nomoBalance,
+  signSession,
+  getSession,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from "@/lib/auth";
 
 export const runtime = "nodejs";
+
+export async function GET() {
+  const session = await getSession();
+  return NextResponse.json(session ?? { wallet: null, owner: false });
+}
 
 export async function POST(request: Request) {
   let body: { address?: string; signature?: string; nonce?: string };
@@ -17,9 +29,7 @@ export async function POST(request: Request) {
   }
 
   const addr = address as `0x${string}`;
-  const sig = signature as `0x${string}`;
-
-  const validSig = await verifyWalletSignature(addr, sig, nonce);
+  const validSig = await verifyWalletSignature(addr, signature as `0x${string}`, nonce);
   if (!validSig) {
     return NextResponse.json({ error: "Bad signature" }, { status: 401 });
   }
@@ -34,20 +44,10 @@ export async function POST(request: Request) {
   }
 
   if (balance < minNomo) {
-    return NextResponse.json(
-      { error: "Insufficient NOMO", balance, required: minNomo },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "Insufficient NOMO", balance, required: minNomo }, { status: 403 });
   }
 
-  const token = signSession(addr);
   const res = NextResponse.json({ wallet: addr.toLowerCase(), balance });
-  res.cookies.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24,
-    path: "/",
-  });
+  res.cookies.set(SESSION_COOKIE, signSession(addr), sessionCookieOptions);
   return res;
 }

@@ -12,24 +12,38 @@ declare global {
   }
 }
 
-type Status = "disconnected" | "connecting" | "connected" | "error";
+export type SessionInfo = { wallet: string; owner: boolean };
+type Status = "checking" | "disconnected" | "connecting" | "connected" | "error";
 
 export default function WalletConnect({
   onConnected,
 }: {
-  onConnected?: (wallet: string) => void;
+  onConnected?: (session: SessionInfo) => void;
 }) {
-  const [status, setStatus] = useState<Status>("disconnected");
-  const [wallet, setWallet] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>("checking");
+  const [session, setSession] = useState<SessionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/credits")
-      .then((r) => (r.ok ? r.json() : null))
-      .then(() => {
-        // A 200 here just means a session cookie already exists.
+    let cancelled = false;
+    fetch("/api/auth")
+      .then((r) => r.json())
+      .then((data: { wallet: string | null; owner: boolean }) => {
+        if (cancelled) return;
+        if (data.wallet) {
+          const s = { wallet: data.wallet, owner: data.owner };
+          setSession(s);
+          setStatus("connected");
+          onConnected?.(s);
+        } else {
+          setStatus("disconnected");
+        }
       })
-      .catch(() => {});
+      .catch(() => !cancelled && setStatus("disconnected"));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const connect = async () => {
@@ -42,9 +56,7 @@ export default function WalletConnect({
 
     setStatus("connecting");
     try {
-      const accounts = (await window.ethereum.request({
-        method: "eth_requestAccounts",
-      })) as string[];
+      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
       const address = accounts[0];
       if (!address) throw new Error("No account returned");
 
@@ -60,28 +72,32 @@ export default function WalletConnect({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, signature, nonce }),
       });
-
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error === "Insufficient NOMO"
-          ? `You need at least ${data.required} NOMO (you have ${data.balance}).`
-          : data.error ?? "Sign-in failed");
+        throw new Error(
+          data.error === "Insufficient NOMO"
+            ? `You need at least ${data.required} NOMO (you have ${data.balance}).`
+            : (data.error ?? "Sign-in failed"),
+        );
       }
 
-      setWallet(data.wallet);
+      const s = { wallet: data.wallet as string, owner: false };
+      setSession(s);
       setStatus("connected");
-      onConnected?.(data.wallet);
+      onConnected?.(s);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connection failed");
       setStatus("error");
     }
   };
 
-  if (status === "connected" && wallet) {
+  if (status === "checking") return null;
+
+  if (status === "connected" && session) {
     return (
       <div className="flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-4 py-2 text-xs font-bold text-pink-400">
         <span className="h-1.5 w-1.5 rounded-full bg-pink-400" />
-        {wallet.slice(0, 6)}...{wallet.slice(-4)}
+        {session.owner ? "Owner access" : `${session.wallet.slice(0, 6)}...${session.wallet.slice(-4)}`}
       </div>
     );
   }
