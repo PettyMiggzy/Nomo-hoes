@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 const SOCIALS = [
   { label: "X / Twitter", href: "#", handle: "@nohoescoin" },
@@ -12,6 +13,14 @@ const BOOKING_SHEET = [
   { label: "LP", value: "Locked at launch" },
 ];
 
+const MOST_WANTED = [
+  { src: "/mascot.jpg", charge: "Indecent Exposure to Copium" },
+  { src: "/mascots/mascot-2.jpg", charge: "Aggravated Diamond Hands" },
+  { src: "/mascots/mascot-3.jpg", charge: "Conspiracy to Pump and Dump" },
+  { src: "/mascots/mascot-4.jpg", charge: "Excessive Bag Holding" },
+  { src: "/mascots/mascot-5.jpg", charge: "Simping in the First Degree" },
+];
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
@@ -19,7 +28,10 @@ export default function Home() {
         <span className="text-lg font-black tracking-tight">
           $NOHOES
         </span>
-        <div className="hidden gap-6 text-sm font-semibold text-neutral-400 sm:flex">
+        <div className="hidden items-center gap-6 text-sm font-semibold text-neutral-400 sm:flex">
+          <Link href="/walk-of-hoes" className="hover:text-white">
+            Walk of Hoes
+          </Link>
           {SOCIALS.map((s) => (
             <a key={s.label} href={s.href} className="hover:text-white">
               {s.label}
@@ -72,6 +84,41 @@ export default function Home() {
             >
               Buy — Coming Soon
             </button>
+          </div>
+        </section>
+
+        {/* Most Wanted gallery */}
+        <section className="mx-auto w-full max-w-5xl px-6 pb-20">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-neutral-400">
+              Most Wanted
+            </h2>
+            <Link
+              href="/walk-of-hoes"
+              className="text-sm font-bold text-pink-400 hover:text-pink-300"
+            >
+              Get booked yourself →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+            {MOST_WANTED.map((m) => (
+              <div
+                key={m.src}
+                className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10"
+              >
+                <Image
+                  src={m.src}
+                  alt={m.charge}
+                  fill
+                  className="object-cover transition duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2 pt-6">
+                  <p className="text-[11px] font-semibold leading-tight text-white">
+                    {m.charge}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
