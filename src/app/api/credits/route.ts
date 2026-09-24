@@ -23,6 +23,9 @@ export async function GET() {
     nohoesToken: cfg.nohoesToken,
     burnAddress: cfg.burnAddress,
     chainId: CHAIN_ID,
+    chainName: "Robinhood Chain",
+    rpcUrl: process.env.ROBINHOOD_RPC ?? null,
+    explorerUrl: "https://robinhoodchain.blockscout.com",
     pricing: {
       packs: PRICING.packs,
       vipPriceNomo: PRICING.vipPriceNomo,

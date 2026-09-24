@@ -14,6 +14,9 @@ type Config = {
   nohoesToken: `0x${string}` | null;
   burnAddress: `0x${string}`;
   chainId: number;
+  chainName: string;
+  rpcUrl: string | null;
+  explorerUrl: string;
   pricing: {
     packs: { name: string; nomo: number }[];
     vipPriceNomo: number;
@@ -59,10 +62,27 @@ export default function CreditsPage() {
     setPending(true);
     setStatus(null);
     try {
-      await eth.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: `0x${config.chainId.toString(16)}` }],
-      });
+      try {
+        await eth.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: `0x${config.chainId.toString(16)}` }],
+        });
+      } catch (switchError) {
+        // 4902 = wallet doesn't have this chain configured yet.
+        if ((switchError as { code?: number })?.code !== 4902 || !config.rpcUrl) throw switchError;
+        await eth.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: `0x${config.chainId.toString(16)}`,
+              chainName: config.chainName,
+              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+              rpcUrls: [config.rpcUrl],
+              blockExplorerUrls: [config.explorerUrl],
+            },
+          ],
+        });
+      }
       const decimalsHex = (await eth.request({
         method: "eth_call",
         params: [{ to: token, data: encodeFunctionData({ abi: erc20Abi, functionName: "decimals" }) }, "latest"],
@@ -154,6 +174,17 @@ export default function CreditsPage() {
           <p className="text-sm text-neutral-400">Loading...</p>
         ) : (
           <>
+            {config.token && (
+              <a
+                href={`https://app.uniswap.org/swap?chain=robinhood&outputCurrency=${config.token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-400/20"
+              >
+                Don&apos;t have NOMO? Swap for it on Uniswap →
+              </a>
+            )}
+
             <section className="flex w-full flex-col gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/5 p-5 text-left">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-widest text-amber-400">VIP Pass</p>
