@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "nohoes-age-verified";
+const STORAGE_KEY = "nomohoes-age-verified";
 
 export default function AgeGate() {
   const [verified, setVerified] = useState(true);
@@ -31,7 +31,7 @@ export default function AgeGate() {
       <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 text-center shadow-2xl">
         <div className="relative h-40 w-full">
           <Image
-            src="/mascot.jpg"
+            src="/gnomes/brambleflower.webp"
             alt=""
             fill
             sizes="24rem"
@@ -48,9 +48,10 @@ export default function AgeGate() {
             You must be 18+ to enter
           </h2>
           <p className="text-sm text-neutral-400">
-            $NOHOES is a meme coin with crude humor and satirical content.
-            By entering you confirm you are at least 18 years old and
-            understand this is not financial advice.
+            NOMO HOES features fictional AI companions and 18+ content, plus
+            a meme token with no intrinsic value. By entering you confirm you
+            are at least 18 years old and understand this is not financial
+            advice.
           </p>
           <div className="flex flex-col gap-2 pt-2">
             <button

@@ -14,21 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "$NOHOES — Launching Soon",
+  title: "NOMO HOES — 18+ Gnome Companions",
   description:
-    "$NOHOES is coming. 18+ meme coin. No more hoes, just gains. Follow for the launch.",
+    "12 fictional gnome companions. Chat free, then keep going with $NOMO. 18+ only.",
   openGraph: {
-    title: "$NOHOES — Launching Soon",
-    description:
-      "$NOHOES is coming. 18+ meme coin. No more hoes, just gains.",
-    images: ["/mascot.jpg"],
+    title: "NOMO HOES — 18+ Gnome Companions",
+    description: "12 fictional gnome companions. Chat free, then keep going with $NOMO.",
+    images: ["/gnomes/brambleflower.webp"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "$NOHOES — Launching Soon",
-    description:
-      "$NOHOES is coming. 18+ meme coin. No more hoes, just gains.",
-    images: ["/mascot.jpg"],
+    title: "NOMO HOES — 18+ Gnome Companions",
+    description: "12 fictional gnome companions. Chat free, then keep going with $NOMO.",
+    images: ["/gnomes/brambleflower.webp"],
   },
 };
 
