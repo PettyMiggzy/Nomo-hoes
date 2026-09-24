@@ -5,7 +5,7 @@ import MugshotGenerator from "@/components/MugshotGenerator";
 export const metadata: Metadata = {
   title: "Walk of Hoes — $NOHOES Booking Generator",
   description:
-    "Turn your photo into a satirical $NOHOES booking card. 18+, all in your browser, nothing ever uploaded.",
+    "Generate a satirical $NOHOES booking card from our AI mascot lineup. 18+, all in your browser, no real people, no uploads.",
 };
 
 export default function WalkOfHoes() {
@@ -28,12 +28,12 @@ export default function WalkOfHoes() {
           Walk of Hoes
         </span>
         <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-5xl">
-          Get Yourself Booked
+          Roll the Booking Sheet
         </h1>
         <p className="mx-auto mt-3 max-w-lg text-balance text-neutral-400">
-          Upload a photo and get slapped with degenerate charges,
-          $NOHOES-style. 100% client-side — your photo never leaves your
-          device. 18+, self-uploads only, keep it a joke.
+          Pull a random $NOHOES mascot and slap it with degenerate charges.
+          100% AI-generated art, 100% client-side — no real people, no
+          photo uploads. 18+, keep it a joke.
         </p>
 
         <div className="mt-10">
@@ -44,9 +44,9 @@ export default function WalkOfHoes() {
       <footer className="border-t border-white/10 px-6 py-8">
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 text-center text-xs text-neutral-500">
           <p>
-            18+ only. Satirical, self-serve meme generator. Only upload
-            photos of yourself. Nothing is stored, uploaded, or shared by
-            this site.
+            18+ only. Satirical, AI-generated meme generator — no real
+            people, no photo uploads. Nothing is stored or shared by this
+            site.
           </p>
         </div>
       </footer>

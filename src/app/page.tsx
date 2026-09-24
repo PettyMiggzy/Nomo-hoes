@@ -19,6 +19,8 @@ const MOST_WANTED = [
   { src: "/mascots/mascot-3.jpg", charge: "Conspiracy to Pump and Dump" },
   { src: "/mascots/mascot-4.jpg", charge: "Excessive Bag Holding" },
   { src: "/mascots/mascot-5.jpg", charge: "Simping in the First Degree" },
+  { src: "/mascots/mascot-6.jpg", charge: "Disturbing the Charts" },
+  { src: "/mascots/mascot-7.jpg", charge: "Grand Theft of Your Attention" },
 ];
 
 export default function Home() {

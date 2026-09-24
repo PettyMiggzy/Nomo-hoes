@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { randomCaseNumber, randomCharges } from "@/data/charges";
+import { randomMascot } from "@/data/mascots";
 
 const CANVAS_W = 900;
 const CANVAS_H = 1125;
@@ -34,8 +35,8 @@ function wrapText(
 
 export default function MugshotGenerator() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const [mascotSrc, setMascotSrc] = useState<string>(() => randomMascot());
   const [charges, setCharges] = useState<string[]>(() => randomCharges());
   const [caseNumber, setCaseNumber] = useState(() => randomCaseNumber());
   const [ready, setReady] = useState(false);
@@ -60,23 +61,18 @@ export default function MugshotGenerator() {
       const dh = img.height * scale;
       const dx = (CANVAS_W - dw) / 2;
       const dy = (photoH - dh) / 2;
-      ctx.save();
-      ctx.filter = "grayscale(0.35) contrast(1.15) saturate(1.15) brightness(1.05)";
       ctx.drawImage(img, dx, dy, dw, dh);
-      ctx.restore();
 
-      // Flash / duotone tint
-      ctx.fillStyle = "rgba(249, 115, 22, 0.12)";
+      // Flash tint
+      ctx.fillStyle = "rgba(249, 115, 22, 0.08)";
       ctx.fillRect(0, 0, CANVAS_W, photoH);
-      ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
-      ctx.fillRect(0, 0, CANVAS_W, photoH * 0.25);
     } else {
       ctx.fillStyle = "#27272a";
       ctx.fillRect(0, 0, CANVAS_W, photoH);
       ctx.fillStyle = "#52525b";
       ctx.font = "600 28px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Upload a photo to begin", CANVAS_W / 2, photoH / 2);
+      ctx.fillText("Loading mascot...", CANVAS_W / 2, photoH / 2);
     }
 
     // Height-chart ticks
@@ -146,23 +142,22 @@ export default function MugshotGenerator() {
   }, [charges, caseNumber]);
 
   useEffect(() => {
-    draw();
-  }, [draw]);
-
-  const onFile = (file: File | null | undefined) => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
     const img = new window.Image();
     img.onload = () => {
       imgRef.current = img;
       setReady(true);
       draw();
-      URL.revokeObjectURL(url);
     };
-    img.src = url;
-  };
+    img.src = mascotSrc;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mascotSrc]);
+
+  useEffect(() => {
+    draw();
+  }, [draw]);
 
   const reroll = () => {
+    setMascotSrc((current) => randomMascot(current));
     setCharges(randomCharges());
     setCaseNumber(randomCaseNumber());
   };
@@ -187,26 +182,12 @@ export default function MugshotGenerator() {
         />
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => onFile(e.target.files?.[0])}
-      />
-
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={reroll}
           className="rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400"
         >
-          {ready ? "Use a Different Photo" : "Upload Your Photo"}
-        </button>
-        <button
-          onClick={reroll}
-          className="rounded-full border border-white/15 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/5"
-        >
-          Reroll Charges
+          Get Booked Again
         </button>
         <button
           onClick={download}
@@ -218,10 +199,9 @@ export default function MugshotGenerator() {
       </div>
 
       <p className="max-w-md text-center text-xs text-neutral-500">
-        Everything happens in your browser — your photo is never uploaded or
-        sent anywhere. Only upload photos of yourself, and keep it 18+
-        appropriate. This is a joke generator, not a real legal document
-        (obviously).
+        Every mascot on this site is 100% AI-generated art — no real people,
+        no photo uploads. Generated entirely in your browser. Satire only,
+        18+.
       </p>
     </div>
   );
