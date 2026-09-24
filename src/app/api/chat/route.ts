@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { getGnome } from "@/data/gnomes";
 import { getSession } from "@/lib/auth";
-import { canSendMessage, recordMessage, usageStats } from "@/lib/credits";
+import {
+  canSendMessage,
+  recordMessage,
+  usageStats,
+  consumeGuestMessage,
+  refundGuestMessage,
+} from "@/lib/credits";
 import { veniceChat } from "@/lib/venice";
 
 export const runtime = "nodejs";
@@ -11,11 +17,17 @@ const MAX_MESSAGE_LEN = 500;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+// Vercel sets these from the connecting client and overwrites spoofed values.
+function clientIp(request: Request): string {
+  return (
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
+}
+
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  }
 
   let body: { gnomeId?: string; messages?: ChatMessage[] };
   try {
@@ -27,6 +39,34 @@ export async function POST(request: Request) {
   const gnome = body.gnomeId ? getGnome(body.gnomeId) : undefined;
   if (!gnome) {
     return NextResponse.json({ error: "Unknown gnome" }, { status: 400 });
+  }
+
+  const trimmed = (Array.isArray(body.messages) ? body.messages : [])
+    .filter(
+      (m): m is ChatMessage =>
+        !!m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
+    )
+    .slice(-MAX_HISTORY)
+    .map((m) => ({ ...m, content: m.content.slice(0, MAX_MESSAGE_LEN) }));
+
+  if (trimmed.length === 0) {
+    return NextResponse.json({ error: "No message provided" }, { status: 400 });
+  }
+
+  if (!session) {
+    const ip = clientIp(request);
+    const remaining = await consumeGuestMessage(ip);
+    if (remaining < 0) {
+      return NextResponse.json({ error: "guest_limit" }, { status: 403 });
+    }
+    try {
+      const reply = await veniceChat(gnome.persona, trimmed);
+      return NextResponse.json({ reply, guestRemaining: remaining });
+    } catch (e) {
+      console.error("Venice chat error", e);
+      await refundGuestMessage(ip);
+      return NextResponse.json({ reply: `${gnome.name} got distracted. Try again in a sec.` });
+    }
   }
 
   if (!session.owner) {
@@ -41,18 +81,6 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
-  }
-
-  const trimmed = (Array.isArray(body.messages) ? body.messages : [])
-    .filter(
-      (m): m is ChatMessage =>
-        !!m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
-    )
-    .slice(-MAX_HISTORY)
-    .map((m) => ({ ...m, content: m.content.slice(0, MAX_MESSAGE_LEN) }));
-
-  if (trimmed.length === 0) {
-    return NextResponse.json({ error: "No message provided" }, { status: 400 });
   }
 
   let reply: string;

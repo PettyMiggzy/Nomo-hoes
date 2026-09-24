@@ -1,6 +1,8 @@
 import { neon } from "@neondatabase/serverless";
+import { createHash } from "node:crypto";
 
-const FREE_MESSAGES = Number(process.env.FREE_MESSAGES ?? 10);
+export const GUEST_FREE_MESSAGES = Number(process.env.GUEST_FREE_MESSAGES ?? 5);
+export const FREE_MESSAGES = Number(process.env.FREE_MESSAGES ?? 10);
 const MESSAGES_PER_BATCH = Number(process.env.MESSAGES_PER_NOMO ?? 20);
 export const NOMO_PER_BATCH = Number(process.env.NOMO_PER_BATCH ?? 0.2);
 
@@ -95,6 +97,33 @@ export async function recordMessage(wallet: string, gnomeId: string): Promise<bo
     return debitCredits(wallet, NOMO_PER_BATCH, `chat:${gnomeId}`);
   }
   return true;
+}
+
+function hashIp(ip: string): string {
+  return createHash("sha256").update(`${process.env.JWT_SECRET ?? ""}:${ip}`).digest("hex");
+}
+
+// Reserves one guest message for this IP (shared across all gnomes, 24h
+// window). Returns how many remain, or -1 if the limit was already hit.
+export async function consumeGuestMessage(ip: string): Promise<number> {
+  const rows = await db()`
+    INSERT INTO guest_usage (ip_hash, window_start, messages_used)
+    VALUES (${hashIp(ip)}, now(), 1)
+    ON CONFLICT (ip_hash) DO UPDATE SET
+      messages_used = CASE WHEN guest_usage.window_start < now() - interval '24 hours'
+                           THEN 1 ELSE guest_usage.messages_used + 1 END,
+      window_start  = CASE WHEN guest_usage.window_start < now() - interval '24 hours'
+                           THEN now() ELSE guest_usage.window_start END
+    RETURNING messages_used`;
+  const used = Number(rows[0].messages_used);
+  return used > GUEST_FREE_MESSAGES ? -1 : GUEST_FREE_MESSAGES - used;
+}
+
+// Gives a reserved message back (e.g. when the AI call failed).
+export async function refundGuestMessage(ip: string): Promise<void> {
+  await db()`
+    UPDATE guest_usage SET messages_used = GREATEST(messages_used - 1, 0)
+    WHERE ip_hash = ${hashIp(ip)}`;
 }
 
 export async function usageStats(wallet: string, gnomeId: string) {

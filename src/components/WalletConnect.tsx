@@ -17,8 +17,12 @@ type Status = "checking" | "disconnected" | "connecting" | "connected" | "error"
 
 export default function WalletConnect({
   onConnected,
+  compact = false,
+  knownSession,
 }: {
   onConnected?: (session: SessionInfo) => void;
+  compact?: boolean;
+  knownSession?: SessionInfo | null;
 }) {
   const [status, setStatus] = useState<Status>("checking");
   const [session, setSession] = useState<SessionInfo | null>(null);
@@ -93,21 +97,24 @@ export default function WalletConnect({
 
   if (status === "checking") return null;
 
-  if (status === "connected" && session) {
+  const shown = knownSession ?? session;
+  if (shown) {
     return (
-      <div className="flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-4 py-2 text-xs font-bold text-pink-400">
+      <div className="flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1.5 text-xs font-bold text-pink-400">
         <span className="h-1.5 w-1.5 rounded-full bg-pink-400" />
-        {session.owner ? "Owner access" : `${session.wallet.slice(0, 6)}...${session.wallet.slice(-4)}`}
+        {shown.owner ? "Owner" : `${shown.wallet.slice(0, 6)}...${shown.wallet.slice(-4)}`}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className={`flex flex-col gap-2 ${compact ? "items-end" : "items-center"}`}>
       <button
         onClick={connect}
         disabled={status === "connecting"}
-        className="rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-50"
+        className={`rounded-full bg-pink-500 font-bold text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-50 ${
+          compact ? "px-3 py-1.5 text-xs" : "px-6 py-3 text-sm"
+        }`}
       >
         {status === "connecting" ? "Connecting..." : "Connect Wallet"}
       </button>

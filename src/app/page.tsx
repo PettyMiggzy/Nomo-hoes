@@ -16,6 +16,41 @@ const TOKEN_SHEET = [
 
 const FEATURED = GNOMES.slice(0, 8);
 
+const PACKAGES = [
+  {
+    name: "Free Taste",
+    price: "Free",
+    detail: "No wallet needed",
+    perks: ["5 free messages a day", "Chat with any gnome", "Peek at 18+ teasers"],
+    cta: { label: "Start Chatting", href: "/gnomes" },
+    featured: false,
+  },
+  {
+    name: "Holder",
+    price: "1,000 NOMO",
+    detail: "Just hold it — nothing spent",
+    perks: ["10 free messages a day with every gnome", "240 free messages a day total", "Unlocks paid packs"],
+    cta: { label: "Meet the Gnomes", href: "/gnomes" },
+    featured: false,
+  },
+  {
+    name: "Gardener",
+    price: "5 NOMO",
+    detail: "Most popular",
+    perks: ["500 extra messages", "or 10 custom 18+ pics", "Credits never expire"],
+    cta: { label: "Buy Credits", href: "/credits" },
+    featured: true,
+  },
+  {
+    name: "Hollow Lord",
+    price: "25 NOMO",
+    detail: "For the committed",
+    perks: ["2,500 extra messages", "or 50 custom 18+ pics", "Credits never expire"],
+    cta: { label: "Buy Credits", href: "/credits" },
+    featured: false,
+  },
+];
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
@@ -58,9 +93,9 @@ export default function Home() {
           <div className="space-y-4">
             <h1 className="text-4xl font-black tracking-tight sm:text-6xl">NOMO HOES</h1>
             <p className="mx-auto max-w-xl text-balance text-lg text-neutral-400">
-              24 gnome companions. 24 personalities. Chat free, then keep the
-              conversation going with $NOMO. Hold the token, unlock the
-              roster. 18+ only.
+              24 gnome companions. 24 personalities. Start chatting free —
+              no wallet, no signup. Hold $NOMO for more, and see what
+              they&apos;re hiding. 18+ only.
             </p>
           </div>
 
@@ -69,7 +104,7 @@ export default function Home() {
               href="/gnomes"
               className="rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400"
             >
-              Meet the Gnomes
+              Chat Free Now
             </Link>
             {SOCIALS.map((s) => (
               <a
@@ -79,6 +114,48 @@ export default function Home() {
               >
                 {s.label}
               </a>
+            ))}
+          </div>
+        </section>
+
+        {/* Packages */}
+        <section className="mx-auto w-full max-w-5xl px-6 pb-20">
+          <div className="mb-6 text-center">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-neutral-400">Packages</h2>
+            <p className="mt-2 text-neutral-400">Everyone gets free messages. Keep going with $NOMO.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {PACKAGES.map((p) => (
+              <div
+                key={p.name}
+                className={`flex flex-col rounded-2xl border p-5 text-left ${
+                  p.featured
+                    ? "border-pink-500/60 bg-pink-500/10 shadow-[0_0_40px_-12px_rgba(236,72,153,0.6)]"
+                    : "border-white/10 bg-neutral-900/60"
+                }`}
+              >
+                <p className="text-xs font-bold uppercase tracking-widest text-pink-400">{p.name}</p>
+                <p className="mt-2 text-2xl font-black text-white">{p.price}</p>
+                <p className="text-xs text-neutral-500">{p.detail}</p>
+                <ul className="mt-4 flex-1 space-y-2 text-sm text-neutral-300">
+                  {p.perks.map((perk) => (
+                    <li key={perk} className="flex gap-2">
+                      <span className="text-pink-400">✓</span>
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={p.cta.href}
+                  className={`mt-5 rounded-full px-4 py-2 text-center text-sm font-bold transition ${
+                    p.featured
+                      ? "bg-pink-500 text-black hover:bg-pink-400"
+                      : "border border-white/15 text-white hover:bg-white/5"
+                  }`}
+                >
+                  {p.cta.label}
+                </Link>
+              </div>
             ))}
           </div>
         </section>

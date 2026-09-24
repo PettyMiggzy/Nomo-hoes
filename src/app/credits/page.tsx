@@ -129,6 +129,24 @@ export default function CreditsPage() {
                   Balance: <span className="font-bold text-white">{config.creditsAvailable.toFixed(2)} NOMO</span>
                 </p>
               )}
+              <div className="grid w-full grid-cols-2 gap-2">
+                {[
+                  { name: "Gardener", nomo: 5, note: "500 msgs / 10 pics" },
+                  { name: "Hollow Lord", nomo: 25, note: "2,500 msgs / 50 pics" },
+                ].map((p) => (
+                  <button
+                    key={p.name}
+                    onClick={() => setAmount(p.nomo)}
+                    className={`rounded-xl border p-3 text-left transition ${
+                      amount === p.nomo ? "border-pink-500 bg-pink-500/10" : "border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <p className="text-xs font-bold text-pink-400">{p.name}</p>
+                    <p className="text-lg font-black text-white">{p.nomo} NOMO</p>
+                    <p className="text-[11px] text-neutral-500">{p.note}</p>
+                  </button>
+                ))}
+              </div>
               <label className="flex w-full flex-col gap-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 Amount (NOMO)
                 <input
