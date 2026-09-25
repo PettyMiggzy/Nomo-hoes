@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session?.owner) return NextResponse.json({ error: "Owner only" }, { status: 403 });
 
-  let body: { prompt?: string; seed?: number; transparent?: boolean };
+  let body: { prompt?: string; seed?: number; transparent?: boolean; model?: string; negative_prompt?: string };
   try {
     body = await request.json();
   } catch {
@@ -24,7 +24,10 @@ export async function POST(request: Request) {
   const seed = Number.isFinite(body.seed) ? Number(body.seed) : Math.floor(Math.random() * 1000000);
 
   try {
-    let image = await veniceGenerateImage(prompt, seed);
+    let image = await veniceGenerateImage(prompt, seed, {
+      model: body.model,
+      negativePrompt: body.negative_prompt?.slice(0, MAX_PROMPT_LEN),
+    });
     let contentType = "image/webp";
     if (body.transparent) {
       image = await veniceRemoveBackground(image);
