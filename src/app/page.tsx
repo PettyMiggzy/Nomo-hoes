@@ -3,10 +3,12 @@ import Link from "next/link";
 import { GNOMES } from "@/data/gnomes";
 import { PRICING, packPerks, fmt } from "@/lib/pricing";
 
+// Only links with a real href render; add X's once there's an account.
 const SOCIALS = [
-  { label: "X / Twitter", href: "#", handle: "@nomohoes" },
-  { label: "Telegram", href: "#", handle: "t.me/nomohoes" },
+  { label: "Telegram", href: "https://t.me/nomohoesz", handle: "t.me/nomohoesz" },
 ];
+
+const NOHOES_CA = process.env.NOHOES_CONTRACT;
 
 const TOKEN_SHEET = [
   { label: "Chain", value: "Robinhood (4663)" },
@@ -83,7 +85,7 @@ export default function Home() {
             Credits
           </Link>
           {SOCIALS.map((s) => (
-            <a key={s.label} href={s.href} className="hover:text-white">
+            <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="hover:text-white">
               {s.label}
             </a>
           ))}
@@ -129,6 +131,8 @@ export default function Home() {
               <a
                 key={s.label}
                 href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="rounded-full bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-neutral-200"
               >
                 {s.label}
@@ -241,11 +245,13 @@ export default function Home() {
             <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
               Contract Address
             </p>
-            <p className="mt-2 font-mono text-lg font-bold text-neutral-300">Revealed at launch</p>
+            <p className="mt-2 break-all font-mono text-lg font-bold text-neutral-300">
+              {NOHOES_CA ?? "Revealed at launch"}
+            </p>
             <p className="mx-auto mt-3 max-w-md text-sm text-neutral-500">
               We will never DM you a contract address first. The only real CA
-              will be posted on our official X and Telegram above — anything
-              else is a scam.
+              is the one above and in our official Telegram — anything else is
+              a scam.
             </p>
           </div>
         </section>
