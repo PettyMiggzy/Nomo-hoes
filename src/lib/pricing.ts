@@ -21,6 +21,8 @@ export const PRICING = {
     { name: "Gardener", nomo: num(process.env.PACK_GARDENER_NOMO, 0.5) },
     { name: "Hollow Lord", nomo: num(process.env.PACK_LORD_NOMO, 2) },
   ],
+  adPriceNomo: num(process.env.AD_PRICE_NOMO, 5),
+  adDays: num(process.env.AD_DAYS, 7),
 };
 
 export function packPerks(nomo: number) {

@@ -8,6 +8,7 @@ import GnomeChat from "@/components/GnomeChat";
 import NsfwTeaser from "@/components/NsfwTeaser";
 import GnomeAd from "@/components/GnomeAd";
 import NomoAd from "@/components/NomoAd";
+import AdSlot from "@/components/AdSlot";
 import NomPadBanner from "@/components/NomPadBanner";
 
 export function generateStaticParams() {
@@ -76,6 +77,7 @@ export default async function GnomePage({
           <GnomeChat gnome={gnome} guestFree={PRICING.guestFreeMessages} />
           <aside className="hidden flex-col gap-4 lg:sticky lg:top-6 lg:flex">
             <GnomeAd gnomes={ads} />
+            <AdSlot />
             <NomoAd />
           </aside>
           <div className="grid grid-cols-2 gap-4 lg:hidden">
@@ -84,6 +86,7 @@ export default async function GnomePage({
           </div>
           <div className="mx-auto grid w-full max-w-xs gap-4 lg:hidden">
             <GnomeAd gnomes={ads} />
+            <AdSlot />
             <NomoAd />
           </div>
         </div>

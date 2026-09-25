@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { encodeFunctionData, erc20Abi, parseUnits, decodeFunctionResult, type Hex } from "viem";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
+import { ensureChain, sendTokenTransfer } from "@/lib/walletTx";
 
 type Config = {
   creditsAvailable: number | null;
@@ -61,50 +61,10 @@ export default function CreditsPage() {
     setPending(true);
     setStatus(null);
     try {
-      try {
-        await eth.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: `0x${config.chainId.toString(16)}` }],
-        });
-      } catch (switchError) {
-        // 4902 = wallet doesn't have this chain configured yet. Point it at
-        // our own /api/rpc proxy rather than a raw RPC URL, so a paid/keyed
-        // fallback endpoint never has to be exposed to the browser.
-        if ((switchError as { code?: number })?.code !== 4902) throw switchError;
-        await eth.request({
-          method: "wallet_addEthereumChain",
-          params: [
-            {
-              chainId: `0x${config.chainId.toString(16)}`,
-              chainName: config.chainName,
-              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-              rpcUrls: [`${window.location.origin}/api/rpc`],
-              blockExplorerUrls: [config.explorerUrl],
-            },
-          ],
-        });
-      }
-      const decimalsHex = (await eth.request({
-        method: "eth_call",
-        params: [{ to: token, data: encodeFunctionData({ abi: erc20Abi, functionName: "decimals" }) }, "latest"],
-      })) as Hex;
-      const decimals = decodeFunctionResult({ abi: erc20Abi, functionName: "decimals", data: decimalsHex });
+      await ensureChain(eth, config.chainId, config.chainName, config.explorerUrl);
 
       setStatus("Confirm the transfer in your wallet...");
-      const txHash = (await eth.request({
-        method: "eth_sendTransaction",
-        params: [
-          {
-            from: session.wallet,
-            to: token,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: "transfer",
-              args: [to, parseUnits(String(tokens), decimals)],
-            }),
-          },
-        ],
-      })) as Hex;
+      const txHash = await sendTokenTransfer(eth, session.wallet as `0x${string}`, token, to, tokens);
 
       setStatus("Waiting for the transfer to confirm on chain...");
       for (let attempt = 0; attempt < 40; attempt++) {

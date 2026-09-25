@@ -34,6 +34,8 @@ export async function GET() {
       nomoPerBatch: PRICING.nomoPerBatch,
       messagesPerBatch: PRICING.messagesPerBatch,
       nomoPerImage: PRICING.nomoPerImage,
+      adPriceNomo: PRICING.adPriceNomo,
+      adDays: PRICING.adDays,
     },
   });
 }

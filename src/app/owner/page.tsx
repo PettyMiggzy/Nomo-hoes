@@ -53,6 +53,12 @@ export default function OwnerLogin() {
               Profit Dashboard
             </Link>
             <Link
+              href="/owner/ads"
+              className="rounded-full border border-emerald-400/50 px-6 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-400/10"
+            >
+              Ad Review Queue
+            </Link>
+            <Link
               href="/gnomes"
               className="rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400"
             >
