@@ -6,6 +6,7 @@ import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { GNOMES } from "@/data/gnomes";
 import { CATEGORIES } from "@/lib/categories";
 import CreatorDmSettings from "@/components/CreatorDmSettings";
+import CreatorOwnContent from "@/components/CreatorOwnContent";
 
 type Pricing = { platformCutBps: number; creatorMinPriceNomo: number; nomoPerImage: number };
 type Creator = { wallet: string; displayName: string; bio: string | null; avatarUrl: string | null };
@@ -145,9 +146,9 @@ export default function CreatorPage() {
           <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-emerald-400">
             Creator Studio
           </span>
-          <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Sell Your Own Gnome Scenes</h1>
+          <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Your Content, Your Business</h1>
           <p className="mx-auto mt-3 max-w-md text-balance text-sm text-neutral-400">
-            You generate it, you price it, you keep {pricing ? 100 - pricing.platformCutBps / 100 : "most"}% of
+            Post your own photos &amp; videos or AI gnome scenes, sell paid DMs, set your prices — you keep {pricing ? 100 - pricing.platformCutBps / 100 : "most"}% of
             every sale — paid straight to your wallet, on chain, the moment someone buys.
           </p>
         </div>
@@ -227,8 +228,10 @@ export default function CreatorPage() {
               />
             )}
 
+            {pricing && <CreatorOwnContent wallet={creator.wallet} minPrice={pricing.creatorMinPriceNomo} />}
+
             <section className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-neutral-900/60 p-5 text-left">
-              <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">New post</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">New AI gnome post</p>
               <select
                 value={gnomeId}
                 onChange={(e) => setGnomeId(e.target.value)}

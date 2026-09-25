@@ -6,6 +6,7 @@ import { use, useEffect, useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { categoryLabel } from "@/lib/categories";
 import { buyDmBundle, type PayConfig } from "@/lib/unlockClient";
+import ReportButton from "@/components/ReportButton";
 
 type Profile = {
   creator: { wallet: `0x${string}`; displayName: string; bio: string | null; avatarUrl: string | null };
@@ -97,6 +98,7 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ walle
         )}
         <h1 className="mt-4 text-3xl font-black tracking-tight">{creator.displayName}</h1>
         {creator.bio && <p className="mx-auto mt-2 max-w-md text-balance text-neutral-400">{creator.bio}</p>}
+        <ReportButton target="creator" targetId={creator.wallet} className="mt-2" />
 
         <section className="mt-8 w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900/60 p-5">
           {!dm ? (

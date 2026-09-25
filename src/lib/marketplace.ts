@@ -47,6 +47,10 @@ function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE creator_posts ADD COLUMN IF NOT EXISTS teaser_url TEXT`;
       await sql`ALTER TABLE creators ADD COLUMN IF NOT EXISTS avatar_url TEXT`;
       await sql`ALTER TABLE creator_posts ADD COLUMN IF NOT EXISTS category TEXT`;
+      // Verified creators' own photos/videos (vs AI gnome scenes).
+      await sql`ALTER TABLE creator_posts ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'photo'`;
+      await sql`ALTER TABLE creator_posts ADD COLUMN IF NOT EXISTS own_content BOOLEAN NOT NULL DEFAULT false`;
+      await sql`ALTER TABLE creator_posts ADD COLUMN IF NOT EXISTS attested_at TIMESTAMPTZ`;
     })();
   }
   return schemaReady;
@@ -95,6 +99,8 @@ export type CreatorPost = {
   gnomeId: string;
   title: string;
   category: string | null;
+  kind: "photo" | "clip";
+  ownContent: boolean;
   scene: string;
   imageUrl: string;
   teaserUrl: string | null;
@@ -109,6 +115,8 @@ type PostRow = {
   gnome_id: string;
   title: string;
   category: string | null;
+  kind: "photo" | "clip";
+  own_content: boolean;
   scene: string;
   image_url: string;
   teaser_url: string | null;
@@ -124,6 +132,8 @@ function mapPost(r: PostRow): CreatorPost {
     gnomeId: r.gnome_id,
     title: r.title,
     category: r.category,
+    kind: r.kind,
+    ownContent: r.own_content,
     scene: r.scene,
     imageUrl: r.image_url,
     teaserUrl: r.teaser_url,
@@ -147,14 +157,42 @@ export async function createPendingPost(
   const rows = await db()`
     INSERT INTO creator_posts (creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo)
     VALUES (${addr(creatorWallet)}, ${gnomeId}, ${title}, ${category}, ${scene}, ${imageUrl}, ${teaserUrl}, ${priceNomo})
-    RETURNING id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at`;
+    RETURNING id, creator_wallet, gnome_id, title, category, kind, own_content, scene, image_url, teaser_url, price_nomo, status, created_at`;
   return mapPost(rows[0] as unknown as PostRow);
+}
+
+// A verified creator's own photo or video. `scene` holds their description;
+// gnome_id is 'own' so it never shows up under a gnome.
+export async function createOwnPost(
+  creatorWallet: string,
+  kind: "photo" | "clip",
+  title: string,
+  category: string,
+  description: string,
+  mediaUrl: string,
+  teaserUrl: string,
+  priceNomo: number,
+): Promise<CreatorPost> {
+  await ensureSchema();
+  const rows = await db()`
+    INSERT INTO creator_posts
+      (creator_wallet, gnome_id, title, category, kind, own_content, attested_at, scene, image_url, teaser_url, price_nomo)
+    VALUES (${addr(creatorWallet)}, 'own', ${title}, ${category}, ${kind}, true, now(), ${description}, ${mediaUrl}, ${teaserUrl}, ${priceNomo})
+    RETURNING id, creator_wallet, gnome_id, title, category, kind, own_content, scene, image_url, teaser_url, price_nomo, status, created_at`;
+  return mapPost(rows[0] as unknown as PostRow);
+}
+
+// Takes a post down (owner action on a report). Buyers keep no access.
+export async function takeDownPost(id: number): Promise<boolean> {
+  await ensureSchema();
+  const rows = await db()`UPDATE creator_posts SET status = 'rejected' WHERE id = ${id} RETURNING id`;
+  return rows.length > 0;
 }
 
 export async function myPosts(creatorWallet: string): Promise<CreatorPost[]> {
   await ensureSchema();
   const rows = await db()`
-    SELECT id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at
+    SELECT id, creator_wallet, gnome_id, title, category, kind, own_content, scene, image_url, teaser_url, price_nomo, status, created_at
     FROM creator_posts WHERE creator_wallet = ${addr(creatorWallet)} ORDER BY created_at DESC`;
   return (rows as unknown as PostRow[]).map(mapPost);
 }
@@ -162,7 +200,7 @@ export async function myPosts(creatorWallet: string): Promise<CreatorPost[]> {
 export async function pendingPosts(): Promise<CreatorPost[]> {
   await ensureSchema();
   const rows = await db()`
-    SELECT id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at
+    SELECT id, creator_wallet, gnome_id, title, category, kind, own_content, scene, image_url, teaser_url, price_nomo, status, created_at
     FROM creator_posts WHERE status = 'pending' ORDER BY created_at ASC`;
   return (rows as unknown as PostRow[]).map(mapPost);
 }
@@ -181,7 +219,7 @@ export type MarketplaceListing = CreatorPost & { creatorName: string; creatorAva
 export async function activeListings(limit = 60): Promise<MarketplaceListing[]> {
   await ensureSchema();
   const rows = await db()`
-    SELECT p.id, p.creator_wallet, p.gnome_id, p.title, p.category, p.scene, p.image_url, p.teaser_url, p.price_nomo, p.status, p.created_at,
+    SELECT p.id, p.creator_wallet, p.gnome_id, p.title, p.category, p.kind, p.own_content, p.scene, p.image_url, p.teaser_url, p.price_nomo, p.status, p.created_at,
            c.display_name AS creator_name, c.avatar_url AS creator_avatar
     FROM creator_posts p
     JOIN creators c ON c.wallet = p.creator_wallet
@@ -198,7 +236,7 @@ export async function activeListings(limit = 60): Promise<MarketplaceListing[]> 
 export async function getPost(id: number): Promise<CreatorPost | null> {
   await ensureSchema();
   const rows = await db()`
-    SELECT id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at
+    SELECT id, creator_wallet, gnome_id, title, category, kind, own_content, scene, image_url, teaser_url, price_nomo, status, created_at
     FROM creator_posts WHERE id = ${id}`;
   return rows.length ? mapPost(rows[0] as unknown as PostRow) : null;
 }

@@ -8,6 +8,8 @@ type Post = {
   creatorWallet: string;
   gnomeId: string;
   title: string;
+  kind: "photo" | "clip";
+  ownContent: boolean;
   scene: string;
   priceNomo: number;
   createdAt: string;
@@ -78,7 +80,9 @@ export default function OwnerMarketplacePage() {
         <div className="flex flex-col gap-4">
           {posts?.map((p) => (
             <div key={p.id} className="flex gap-4 rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
-              {previews[p.id] ? (
+              {previews[p.id] && p.kind === "clip" ? (
+                <video src={previews[p.id]} controls className="h-40 w-40 shrink-0 rounded-lg object-cover" />
+              ) : previews[p.id] ? (
                 // eslint-disable-next-line @next/next/no-img-element -- private blob URL, arbitrary generated content
                 <img src={previews[p.id]} alt={p.title} className="h-24 w-24 shrink-0 rounded-lg object-cover" />
               ) : (
@@ -90,7 +94,19 @@ export default function OwnerMarketplacePage() {
                 </button>
               )}
               <div className="flex flex-1 flex-col gap-1 text-left text-sm">
-                <p className="font-bold text-white">{p.title}</p>
+                <p className="font-bold text-white">
+                  {p.title}{" "}
+                  {p.ownContent && (
+                    <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                      REAL PERSON · {p.kind}
+                    </span>
+                  )}
+                </p>
+                {p.ownContent && (
+                  <p className="text-xs text-amber-200/80">
+                    Check: only the verified creator (or clearly adult, consenting people) appear; nothing illegal.
+                  </p>
+                )}
                 <p className="font-mono text-xs text-neutral-500">{p.creatorWallet}</p>
                 <p className="text-xs text-neutral-400">{p.scene}</p>
                 <p className="text-xs text-emerald-400">{p.priceNomo} NOMO</p>
