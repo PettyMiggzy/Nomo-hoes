@@ -2,24 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
-import { ensureChain, sendTokenTransfer } from "@/lib/walletTx";
+import { unlockPremium, type PayConfig } from "@/lib/unlockClient";
 
 type Item = { id: number; kind: "photo" | "clip"; title: string; teaserUrl: string; priceNomo: number; unlocked: boolean };
-
-type Config = {
-  treasury: `0x${string}` | null;
-  token: `0x${string}` | null;
-  chainId: number;
-  chainName: string;
-  explorerUrl: string;
-};
 
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 });
 
 export default function PremiumGallery({ gnomeId, gnomeName }: { gnomeId: string; gnomeName: string }) {
   const [items, setItems] = useState<Item[]>([]);
   const [session, setSession] = useState<SessionInfo | null>(null);
-  const [config, setConfig] = useState<Config | null>(null);
+  const [config, setConfig] = useState<PayConfig | null>(null);
   const [media, setMedia] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -56,37 +48,13 @@ export default function PremiumGallery({ gnomeId, gnomeName }: { gnomeId: string
 
   const unlock = async (item: Item) => {
     const eth = window.ethereum;
-    if (!session || !eth || !config) return;
-    if (!config.treasury || !config.token) {
-      setStatus("Payments aren't configured yet.");
-      return;
-    }
+    if (!session || !eth) return;
     setBusy(item.id);
     setStatus(null);
     try {
-      await ensureChain(eth, config.chainId, config.chainName, config.explorerUrl);
-      setStatus("Confirm the payment in your wallet...");
-      const txHash = await sendTokenTransfer(eth, session.wallet as `0x${string}`, config.token, config.treasury, item.priceNomo);
-      setStatus("Waiting for your payment to confirm on chain...");
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const res = await fetch("/api/premium/purchase", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ itemId: item.id, txHash }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setItems((all) => all.map((i) => (i.id === item.id ? { ...i, unlocked: true } : i)));
-          setStatus(null);
-          return;
-        }
-        if (res.status !== 409) {
-          setStatus(data.error ?? "Something went wrong");
-          return;
-        }
-        await new Promise((r) => setTimeout(r, 3000));
-      }
-      setStatus("Still not confirmed. Your payment is safe — refresh and try again shortly.");
+      await unlockPremium(eth, session.wallet, config, item, setStatus);
+      setItems((all) => all.map((i) => (i.id === item.id ? { ...i, unlocked: true } : i)));
+      setStatus(null);
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Something went wrong.");
     } finally {

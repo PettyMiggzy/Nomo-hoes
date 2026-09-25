@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { GNOMES } from "@/data/gnomes";
+import { CATEGORIES } from "@/lib/categories";
 
 type Pricing = { platformCutBps: number; creatorMinPriceNomo: number; nomoPerImage: number };
 type Creator = { wallet: string; displayName: string; bio: string | null; avatarUrl: string | null };
@@ -31,6 +32,7 @@ export default function CreatorPage() {
 
   const [gnomeId, setGnomeId] = useState(GNOMES[0]?.id ?? "");
   const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<string>(CATEGORIES[0].id);
   const [scene, setScene] = useState("");
   const [price, setPrice] = useState(0);
   const [pending, setPending] = useState(false);
@@ -74,7 +76,7 @@ export default function CreatorPage() {
       const res = await fetch("/api/creator/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gnomeId, title, scene, priceNomo: price }),
+        body: JSON.stringify({ gnomeId, title, scene, category, priceNomo: price }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -220,6 +222,17 @@ export default function CreatorPage() {
                 {GNOMES.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="rounded-lg bg-white/5 px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
                   </option>
                 ))}
               </select>

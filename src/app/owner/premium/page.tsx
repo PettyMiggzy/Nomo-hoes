@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CATEGORIES } from "@/lib/categories";
 
 type Item = {
   id: number;
   gnomeId: string;
   kind: "photo" | "clip";
   title: string;
+  category: string | null;
   mediaUrl: string;
   teaserUrl: string;
   priceNomo: number;
@@ -42,7 +44,7 @@ export default function OwnerPremiumPage() {
     load();
   }, []);
 
-  const patch = async (id: number, body: { priceNomo?: number; active?: boolean }) => {
+  const patch = async (id: number, body: { priceNomo?: number; active?: boolean; category?: string }) => {
     setBusy(id);
     try {
       await fetch("/api/owner/premium", {
@@ -90,6 +92,21 @@ export default function OwnerPremiumPage() {
                 <p className="text-neutral-500">
                   {i.gnomeId} · {i.kind}
                 </p>
+                <select
+                  value={i.category ?? ""}
+                  disabled={busy === i.id}
+                  onChange={(e) => patch(i.id, { category: e.target.value })}
+                  className="rounded border border-white/10 bg-black px-2 py-1 text-white"
+                >
+                  <option value="" disabled>
+                    Category...
+                  </option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
                 <div className="flex items-center gap-2">
                   <input
                     value={prices[i.id] ?? String(i.priceNomo)}

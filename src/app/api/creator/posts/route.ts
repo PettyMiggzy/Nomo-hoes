@@ -8,6 +8,7 @@ import { veniceGenerateImage, IMAGE_COST_USD } from "@/lib/venice";
 import { PRICING } from "@/lib/pricing";
 import { logUsage } from "@/lib/usage";
 import { makeTeaser } from "@/lib/teaser";
+import { isCategory } from "@/lib/categories";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   const creator = await getCreator(session.wallet);
   if (!creator) return NextResponse.json({ error: "Sign up as a creator first" }, { status: 400 });
 
-  let body: { gnomeId?: string; title?: string; scene?: string; priceNomo?: number };
+  let body: { gnomeId?: string; title?: string; scene?: string; category?: string; priceNomo?: number };
   try {
     body = await request.json();
   } catch {
@@ -43,6 +44,8 @@ export async function POST(request: Request) {
   if (!gnome || !title || !scene) {
     return NextResponse.json({ error: "Missing gnomeId, title, or scene" }, { status: 400 });
   }
+  const category = body.category;
+  if (!isCategory(category)) return NextResponse.json({ error: "Pick a category" }, { status: 400 });
   if (!Number.isFinite(price) || price < PRICING.creatorMinPriceNomo) {
     return NextResponse.json({ error: `Price must be at least ${PRICING.creatorMinPriceNomo} NOMO` }, { status: 400 });
   }
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
       contentType: "image/jpeg",
     });
 
-    const post = await createPendingPost(session.wallet, gnome.id, title, scene, blob.url, teaser.url, price);
+    const post = await createPendingPost(session.wallet, gnome.id, title, category, scene, blob.url, teaser.url, price);
     return NextResponse.json({ post: { ...post, imageUrl: undefined } });
   } catch (e) {
     console.error("creator post generation error", e);

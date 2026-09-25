@@ -46,6 +46,7 @@ function ensureSchema(): Promise<void> {
       // Added after launch: a blurred preview for listings and a creator pfp.
       await sql`ALTER TABLE creator_posts ADD COLUMN IF NOT EXISTS teaser_url TEXT`;
       await sql`ALTER TABLE creators ADD COLUMN IF NOT EXISTS avatar_url TEXT`;
+      await sql`ALTER TABLE creator_posts ADD COLUMN IF NOT EXISTS category TEXT`;
     })();
   }
   return schemaReady;
@@ -93,6 +94,7 @@ export type CreatorPost = {
   creatorWallet: string;
   gnomeId: string;
   title: string;
+  category: string | null;
   scene: string;
   imageUrl: string;
   teaserUrl: string | null;
@@ -106,6 +108,7 @@ type PostRow = {
   creator_wallet: string;
   gnome_id: string;
   title: string;
+  category: string | null;
   scene: string;
   image_url: string;
   teaser_url: string | null;
@@ -120,6 +123,7 @@ function mapPost(r: PostRow): CreatorPost {
     creatorWallet: r.creator_wallet,
     gnomeId: r.gnome_id,
     title: r.title,
+    category: r.category,
     scene: r.scene,
     imageUrl: r.image_url,
     teaserUrl: r.teaser_url,
@@ -133,6 +137,7 @@ export async function createPendingPost(
   creatorWallet: string,
   gnomeId: string,
   title: string,
+  category: string,
   scene: string,
   imageUrl: string,
   teaserUrl: string,
@@ -140,16 +145,16 @@ export async function createPendingPost(
 ): Promise<CreatorPost> {
   await ensureSchema();
   const rows = await db()`
-    INSERT INTO creator_posts (creator_wallet, gnome_id, title, scene, image_url, teaser_url, price_nomo)
-    VALUES (${addr(creatorWallet)}, ${gnomeId}, ${title}, ${scene}, ${imageUrl}, ${teaserUrl}, ${priceNomo})
-    RETURNING id, creator_wallet, gnome_id, title, scene, image_url, teaser_url, price_nomo, status, created_at`;
+    INSERT INTO creator_posts (creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo)
+    VALUES (${addr(creatorWallet)}, ${gnomeId}, ${title}, ${category}, ${scene}, ${imageUrl}, ${teaserUrl}, ${priceNomo})
+    RETURNING id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at`;
   return mapPost(rows[0] as unknown as PostRow);
 }
 
 export async function myPosts(creatorWallet: string): Promise<CreatorPost[]> {
   await ensureSchema();
   const rows = await db()`
-    SELECT id, creator_wallet, gnome_id, title, scene, image_url, teaser_url, price_nomo, status, created_at
+    SELECT id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at
     FROM creator_posts WHERE creator_wallet = ${addr(creatorWallet)} ORDER BY created_at DESC`;
   return (rows as unknown as PostRow[]).map(mapPost);
 }
@@ -157,7 +162,7 @@ export async function myPosts(creatorWallet: string): Promise<CreatorPost[]> {
 export async function pendingPosts(): Promise<CreatorPost[]> {
   await ensureSchema();
   const rows = await db()`
-    SELECT id, creator_wallet, gnome_id, title, scene, image_url, teaser_url, price_nomo, status, created_at
+    SELECT id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at
     FROM creator_posts WHERE status = 'pending' ORDER BY created_at ASC`;
   return (rows as unknown as PostRow[]).map(mapPost);
 }
@@ -176,7 +181,7 @@ export type MarketplaceListing = CreatorPost & { creatorName: string; creatorAva
 export async function activeListings(limit = 60): Promise<MarketplaceListing[]> {
   await ensureSchema();
   const rows = await db()`
-    SELECT p.id, p.creator_wallet, p.gnome_id, p.title, p.scene, p.image_url, p.teaser_url, p.price_nomo, p.status, p.created_at,
+    SELECT p.id, p.creator_wallet, p.gnome_id, p.title, p.category, p.scene, p.image_url, p.teaser_url, p.price_nomo, p.status, p.created_at,
            c.display_name AS creator_name, c.avatar_url AS creator_avatar
     FROM creator_posts p
     JOIN creators c ON c.wallet = p.creator_wallet
@@ -193,7 +198,7 @@ export async function activeListings(limit = 60): Promise<MarketplaceListing[]> 
 export async function getPost(id: number): Promise<CreatorPost | null> {
   await ensureSchema();
   const rows = await db()`
-    SELECT id, creator_wallet, gnome_id, title, scene, image_url, teaser_url, price_nomo, status, created_at
+    SELECT id, creator_wallet, gnome_id, title, category, scene, image_url, teaser_url, price_nomo, status, created_at
     FROM creator_posts WHERE id = ${id}`;
   return rows.length ? mapPost(rows[0] as unknown as PostRow) : null;
 }

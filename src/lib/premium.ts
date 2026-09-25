@@ -34,6 +34,7 @@ function ensureSchema(): Promise<void> {
           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
           UNIQUE (item_id, buyer_wallet)
         )`;
+      await sql`ALTER TABLE premium_items ADD COLUMN IF NOT EXISTS category TEXT`;
     })();
   }
   return schemaReady;
@@ -48,6 +49,7 @@ export type PremiumItem = {
   gnomeId: string;
   kind: PremiumKind;
   title: string;
+  category: string | null;
   mediaUrl: string;
   teaserUrl: string;
   priceNomo: number;
@@ -60,6 +62,7 @@ type ItemRow = {
   gnome_id: string;
   kind: PremiumKind;
   title: string;
+  category: string | null;
   media_url: string;
   teaser_url: string;
   price_nomo: string | number;
@@ -72,6 +75,7 @@ const mapItem = (r: ItemRow): PremiumItem => ({
   gnomeId: r.gnome_id,
   kind: r.kind,
   title: r.title,
+  category: r.category,
   mediaUrl: r.media_url,
   teaserUrl: r.teaser_url,
   priceNomo: Number(r.price_nomo),
@@ -83,14 +87,15 @@ export async function createItem(
   gnomeId: string,
   kind: PremiumKind,
   title: string,
+  category: string | null,
   mediaUrl: string,
   teaserUrl: string,
   priceNomo: number,
 ): Promise<PremiumItem> {
   await ensureSchema();
   const rows = await db()`
-    INSERT INTO premium_items (gnome_id, kind, title, media_url, teaser_url, price_nomo)
-    VALUES (${gnomeId}, ${kind}, ${title}, ${mediaUrl}, ${teaserUrl}, ${priceNomo})
+    INSERT INTO premium_items (gnome_id, kind, title, category, media_url, teaser_url, price_nomo)
+    VALUES (${gnomeId}, ${kind}, ${title}, ${category}, ${mediaUrl}, ${teaserUrl}, ${priceNomo})
     RETURNING *`;
   return mapItem(rows[0] as unknown as ItemRow);
 }
@@ -99,6 +104,12 @@ export async function itemsForGnome(gnomeId: string): Promise<PremiumItem[]> {
   await ensureSchema();
   const rows = await db()`
     SELECT * FROM premium_items WHERE gnome_id = ${gnomeId} AND active ORDER BY kind DESC, created_at ASC`;
+  return (rows as unknown as ItemRow[]).map(mapItem);
+}
+
+export async function activeItems(): Promise<PremiumItem[]> {
+  await ensureSchema();
+  const rows = await db()`SELECT * FROM premium_items WHERE active ORDER BY created_at DESC`;
   return (rows as unknown as ItemRow[]).map(mapItem);
 }
 
@@ -114,12 +125,16 @@ export async function getItem(id: number): Promise<PremiumItem | null> {
   return rows.length ? mapItem(rows[0] as unknown as ItemRow) : null;
 }
 
-export async function updateItem(id: number, patch: { priceNomo?: number; active?: boolean }): Promise<boolean> {
+export async function updateItem(
+  id: number,
+  patch: { priceNomo?: number; active?: boolean; category?: string },
+): Promise<boolean> {
   await ensureSchema();
   const rows = await db()`
     UPDATE premium_items
     SET price_nomo = coalesce(${patch.priceNomo ?? null}::numeric, price_nomo),
-        active = coalesce(${patch.active ?? null}::boolean, active)
+        active = coalesce(${patch.active ?? null}::boolean, active),
+        category = coalesce(${patch.category ?? null}::text, category)
     WHERE id = ${id}
     RETURNING id`;
   return rows.length > 0;

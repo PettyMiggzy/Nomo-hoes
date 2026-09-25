@@ -22,6 +22,7 @@ export async function GET() {
     listings: listings.map((l) => ({
       id: l.id,
       title: l.title,
+      category: l.category,
       gnomeId: l.gnomeId,
       gnomeName: getGnome(l.gnomeId)?.name ?? l.gnomeId,
       creatorName: l.creatorName,

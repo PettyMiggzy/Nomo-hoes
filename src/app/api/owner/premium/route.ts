@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getGnome } from "@/data/gnomes";
 import { allItems, createItem, premiumRevenue, updateItem, type PremiumKind } from "@/lib/premium";
 import { PRICING } from "@/lib/pricing";
+import { isCategory } from "@/lib/categories";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -24,7 +25,7 @@ export async function GET() {
   return NextResponse.json({ items, revenue, defaults: { photo: PRICING.premiumPhotoNomo, clip: PRICING.premiumClipNomo } });
 }
 
-// multipart: gnomeId, kind (photo|clip), title, price (optional), media, teaser.
+// multipart: gnomeId, kind (photo|clip), title, category, price (optional), media, teaser.
 // The teaser is a pre-blurred still made before upload; it's the only thing
 // non-buyers ever see.
 export async function POST(request: Request) {
@@ -39,6 +40,8 @@ export async function POST(request: Request) {
   if (!gnome) return NextResponse.json({ error: "Unknown gnome" }, { status: 400 });
   if (kind !== "photo" && kind !== "clip") return NextResponse.json({ error: "kind must be photo or clip" }, { status: 400 });
   if (!title) return NextResponse.json({ error: "Missing title" }, { status: 400 });
+  const category = form.get("category");
+  if (!isCategory(category)) return NextResponse.json({ error: "Unknown category" }, { status: 400 });
   if (!(media instanceof File) || !MEDIA_TYPES[kind].includes(media.type)) {
     return NextResponse.json({ error: `media must be one of ${MEDIA_TYPES[kind].join(", ")}` }, { status: 400 });
   }
@@ -53,18 +56,24 @@ export async function POST(request: Request) {
     put(`premium/${gnome.id}-${kind}.${ext(media)}`, media, { access: "public", addRandomSuffix: true, contentType: media.type }),
     put(`premium-teasers/${gnome.id}.${ext(teaser)}`, teaser, { access: "public", addRandomSuffix: true, contentType: teaser.type }),
   ]);
-  const item = await createItem(gnome.id, kind, title, mediaBlob.url, teaserBlob.url, price);
+  const item = await createItem(gnome.id, kind, title, category, mediaBlob.url, teaserBlob.url, price);
   return NextResponse.json({ item });
 }
 
-// Body: { id, priceNomo?, active? }
+// Body: { id, priceNomo?, active?, category? }
 export async function PATCH(request: Request) {
   if (!(await requireOwner())) return NextResponse.json({ error: "Owner only" }, { status: 403 });
-  const body = (await request.json().catch(() => ({}))) as { id?: number; priceNomo?: number; active?: boolean };
+  const body = (await request.json().catch(() => ({}))) as {
+    id?: number;
+    priceNomo?: number;
+    active?: boolean;
+    category?: string;
+  };
   const id = Number(body.id);
   if (!Number.isInteger(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   const priceNomo = body.priceNomo !== undefined && Number(body.priceNomo) > 0 ? Number(body.priceNomo) : undefined;
   const active = typeof body.active === "boolean" ? body.active : undefined;
-  const ok = await updateItem(id, { priceNomo, active });
+  const category = isCategory(body.category) ? body.category : undefined;
+  const ok = await updateItem(id, { priceNomo, active, category });
   return ok ? NextResponse.json({ success: true }) : NextResponse.json({ error: "Not found" }, { status: 404 });
 }
