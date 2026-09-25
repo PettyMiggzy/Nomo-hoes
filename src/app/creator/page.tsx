@@ -6,7 +6,7 @@ import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { GNOMES } from "@/data/gnomes";
 
 type Pricing = { platformCutBps: number; creatorMinPriceNomo: number; nomoPerImage: number };
-type Creator = { wallet: string; displayName: string; bio: string | null };
+type Creator = { wallet: string; displayName: string; bio: string | null; avatarUrl: string | null };
 type Post = {
   id: number;
   gnomeId: string;
@@ -93,6 +93,20 @@ export default function CreatorPage() {
     }
   };
 
+  const uploadAvatar = async (file: File | undefined) => {
+    if (!file) return;
+    setStatus(null);
+    const form = new FormData();
+    form.append("avatar", file);
+    const res = await fetch("/api/creator/avatar", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus(data.error ?? "Upload failed");
+      return;
+    }
+    setCreator((c) => (c ? { ...c, avatarUrl: data.avatarUrl } : c));
+  };
+
   const viewPreview = async (postId: number) => {
     const res = await fetch(`/api/marketplace/posts/${postId}/image`);
     if (res.ok) {
@@ -167,6 +181,22 @@ export default function CreatorPage() {
           </div>
         ) : (
           <>
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-neutral-900/60 px-4 py-3">
+              {creator.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={creator.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+              ) : (
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/30 text-lg font-black text-pink-200">
+                  {creator.displayName.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span className="text-left text-sm">
+                <span className="block font-bold text-white">{creator.displayName}</span>
+                <span className="text-xs text-emerald-400">{creator.avatarUrl ? "Change" : "Add"} profile pic</span>
+              </span>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadAvatar(e.target.files?.[0])} />
+            </label>
+
             {earnings && (
               <div className="flex w-full max-w-sm justify-center gap-6 rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
                 <div>

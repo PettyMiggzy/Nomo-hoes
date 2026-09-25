@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isHash } from "viem";
 import { getSession } from "@/lib/auth";
 import { getItem, hasUnlocked, recordUnlock, txUsedElsewhere } from "@/lib/premium";
+import { vipUntil } from "@/lib/credits";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
 
 export const runtime = "nodejs";
@@ -24,7 +25,9 @@ export async function POST(request: Request) {
 
   const item = await getItem(itemId);
   if (!item || !item.active) return NextResponse.json({ error: "Item not available" }, { status: 404 });
-  if (await hasUnlocked(itemId, session.wallet)) return NextResponse.json({ success: true });
+  if ((await hasUnlocked(itemId, session.wallet)) || (await vipUntil(session.wallet))) {
+    return NextResponse.json({ success: true });
+  }
 
   const { treasury, token } = paymentConfig();
   if (!treasury || !token) return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });

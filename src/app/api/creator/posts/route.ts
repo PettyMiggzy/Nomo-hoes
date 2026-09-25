@@ -7,6 +7,7 @@ import { debitCredits, grantCredits, creditBalance } from "@/lib/credits";
 import { veniceGenerateImage, IMAGE_COST_USD } from "@/lib/venice";
 import { PRICING } from "@/lib/pricing";
 import { logUsage } from "@/lib/usage";
+import { makeTeaser } from "@/lib/teaser";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -65,7 +66,13 @@ export async function POST(request: Request) {
       contentType: "image/webp",
     });
 
-    const post = await createPendingPost(session.wallet, gnome.id, title, scene, blob.url, price);
+    const teaser = await put(`creator-teasers/${gnome.id}.jpg`, await makeTeaser(image), {
+      access: "public",
+      addRandomSuffix: true,
+      contentType: "image/jpeg",
+    });
+
+    const post = await createPendingPost(session.wallet, gnome.id, title, scene, blob.url, teaser.url, price);
     return NextResponse.json({ post: { ...post, imageUrl: undefined } });
   } catch (e) {
     console.error("creator post generation error", e);
