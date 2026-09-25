@@ -345,7 +345,16 @@ export default function MarketplacePage() {
                             {e.creatorName.slice(0, 1).toUpperCase()}
                           </span>
                         )}
-                        <p className="truncate text-[11px] text-neutral-400">{e.creatorName}</p>
+                        {e.source === "creator" && e.creatorWallet ? (
+                          <Link
+                            href={`/creators/${e.creatorWallet}`}
+                            className="truncate text-[11px] text-neutral-400 underline-offset-2 hover:text-pink-300 hover:underline"
+                          >
+                            {e.creatorName} · 💬
+                          </Link>
+                        ) : (
+                          <p className="truncate text-[11px] text-neutral-400">{e.creatorName}</p>
+                        )}
                       </div>
                       {e.unlocked ? (
                         <button

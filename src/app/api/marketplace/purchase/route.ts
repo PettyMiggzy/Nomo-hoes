@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getPost, recordPurchase, hasPurchased } from "@/lib/marketplace";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
 import { splitSale } from "@/lib/pricing";
+import { txAlreadyRedeemed } from "@/lib/txGuard";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,10 @@ export async function POST(request: Request) {
 
   const { treasury, token } = paymentConfig();
   if (!treasury || !token) return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });
+
+  if (await txAlreadyRedeemed(body.creatorTxHash, body.treasuryTxHash)) {
+    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
+  }
 
   const { creatorCut, platformCut } = splitSale(post.priceNomo);
 

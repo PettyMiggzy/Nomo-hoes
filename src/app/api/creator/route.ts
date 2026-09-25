@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getCreator, upsertCreator, myPosts, creatorEarnings } from "@/lib/marketplace";
+import { getDmSettings, dmEarnings } from "@/lib/dm";
 
 export const runtime = "nodejs";
 
@@ -14,8 +15,13 @@ export async function GET() {
   const creator = await getCreator(session.wallet);
   if (!creator) return NextResponse.json({ creator: null });
 
-  const [posts, earnings] = await Promise.all([myPosts(session.wallet), creatorEarnings(session.wallet)]);
-  return NextResponse.json({ creator, posts, earnings });
+  const [posts, earnings, dm, dmEarned] = await Promise.all([
+    myPosts(session.wallet),
+    creatorEarnings(session.wallet),
+    getDmSettings(session.wallet),
+    dmEarnings(session.wallet),
+  ]);
+  return NextResponse.json({ creator, posts, earnings, dm, dmEarnings: dmEarned });
 }
 
 // Body: { displayName, bio? } -- signs up (or edits) a creator profile. No

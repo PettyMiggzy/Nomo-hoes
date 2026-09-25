@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { GNOMES } from "@/data/gnomes";
 import { CATEGORIES } from "@/lib/categories";
+import CreatorDmSettings from "@/components/CreatorDmSettings";
 
 type Pricing = { platformCutBps: number; creatorMinPriceNomo: number; nomoPerImage: number };
 type Creator = { wallet: string; displayName: string; bio: string | null; avatarUrl: string | null };
@@ -26,6 +27,8 @@ export default function CreatorPage() {
   const [creator, setCreator] = useState<Creator | null | undefined>(undefined);
   const [posts, setPosts] = useState<Post[]>([]);
   const [earnings, setEarnings] = useState<{ sales: number; earnedNomo: number } | null>(null);
+  const [dm, setDm] = useState<{ enabled: boolean; priceNomo: number | null } | null>(null);
+  const [dmEarned, setDmEarned] = useState<{ bundles: number; earnedNomo: number } | null>(null);
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -46,6 +49,8 @@ export default function CreatorPage() {
       setCreator(data.creator ?? null);
       setPosts(data.posts ?? []);
       setEarnings(data.earnings ?? null);
+      setDm(data.dm ?? null);
+      setDmEarned(data.dmEarnings ?? null);
     }
     if (configRes.ok) {
       const data = await configRes.json();
@@ -210,6 +215,16 @@ export default function CreatorPage() {
                   <p className="text-[11px] text-neutral-500">NOMO Earned</p>
                 </div>
               </div>
+            )}
+
+            {pricing && (
+              <CreatorDmSettings
+                key={creator.wallet}
+                wallet={creator.wallet}
+                initial={dm}
+                earnings={dmEarned}
+                cutPercent={pricing.platformCutBps / 100}
+              />
             )}
 
             <section className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-neutral-900/60 p-5 text-left">

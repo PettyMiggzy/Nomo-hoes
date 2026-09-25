@@ -68,3 +68,28 @@ export async function buyCreatorPost(
   const data = await confirm("/api/marketplace/purchase", { postId: post.id, creatorTxHash, treasuryTxHash }, setStatus);
   return data.imageUrl;
 }
+
+// DM bundle: `messages` at the creator's per-message price, split like a
+// marketplace sale (creator's cut to them, platform cut to the treasury).
+export async function buyDmBundle(
+  eth: EthProvider,
+  wallet: string,
+  config: PayConfig | null,
+  creatorWallet: `0x${string}`,
+  priceNomo: number,
+  messages: number,
+  setStatus: Status,
+): Promise<void> {
+  ready(config);
+  const total = Math.round(priceNomo * messages * 1e6) / 1e6;
+  const bps = config.pricing.platformCutBps;
+  const creatorCut = Math.round(((total * (10000 - bps)) / 10000) * 1e6) / 1e6;
+  const platformCut = Math.round((total - creatorCut) * 1e6) / 1e6;
+
+  await ensureChain(eth, config.chainId, config.chainName, config.explorerUrl);
+  setStatus("Confirm the creator's payment in your wallet...");
+  const creatorTxHash = await sendTokenTransfer(eth, wallet as `0x${string}`, config.token, creatorWallet, creatorCut);
+  setStatus("Confirm the platform's payment in your wallet...");
+  const treasuryTxHash = await sendTokenTransfer(eth, wallet as `0x${string}`, config.token, config.treasury, platformCut);
+  await confirm("/api/dm/purchase", { creator: creatorWallet, messages, creatorTxHash, treasuryTxHash }, setStatus);
+}

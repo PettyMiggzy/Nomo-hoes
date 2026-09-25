@@ -29,6 +29,10 @@ export const PRICING = {
   // afterwards from /owner/premium.
   premiumPhotoNomo: num(process.env.PREMIUM_PHOTO_NOMO, 0.1),
   premiumClipNomo: num(process.env.PREMIUM_CLIP_NOMO, 0.3),
+  // Creator DMs: each creator sets their own per-message price (at least the
+  // minimum); fans prepay a bundle, split on chain like a marketplace sale.
+  dmMinPriceNomo: num(process.env.DM_MIN_PRICE_NOMO, 0.001),
+  dmBundles: [5, 10, 25],
 };
 
 // Splits a marketplace sale so the two amounts always sum exactly to

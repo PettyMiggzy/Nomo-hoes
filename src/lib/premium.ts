@@ -153,21 +153,6 @@ export async function hasUnlocked(itemId: number, buyerWallet: string): Promise<
   return rows.length > 0;
 }
 
-// A treasury transfer already redeemed for credits, an ad, or a marketplace
-// sale can't be replayed here to unlock premium content.
-export async function txUsedElsewhere(txHash: string): Promise<boolean> {
-  const sql = db();
-  const h = txHash.toLowerCase();
-  const checks = await Promise.all([
-    sql`SELECT 1 FROM credit_ledger WHERE lower(tx_hash) = ${h} LIMIT 1`.catch(() => []),
-    sql`SELECT 1 FROM ad_slots WHERE lower(tx_hash) = ${h} LIMIT 1`.catch(() => []),
-    sql`SELECT 1 FROM creator_purchases WHERE lower(treasury_tx_hash) = ${h} OR lower(creator_tx_hash) = ${h} LIMIT 1`.catch(
-      () => [],
-    ),
-  ]);
-  return checks.some((rows) => rows.length > 0);
-}
-
 // Idempotent on the tx hash and on (item, buyer).
 export async function recordUnlock(itemId: number, buyerWallet: string, txHash: string, amountNomo: number): Promise<boolean> {
   await ensureSchema();
