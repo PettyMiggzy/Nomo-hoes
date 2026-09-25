@@ -15,7 +15,6 @@ type Config = {
   burnAddress: `0x${string}`;
   chainId: number;
   chainName: string;
-  rpcUrl: string | null;
   explorerUrl: string;
   pricing: {
     packs: { name: string; nomo: number }[];
@@ -68,8 +67,10 @@ export default function CreditsPage() {
           params: [{ chainId: `0x${config.chainId.toString(16)}` }],
         });
       } catch (switchError) {
-        // 4902 = wallet doesn't have this chain configured yet.
-        if ((switchError as { code?: number })?.code !== 4902 || !config.rpcUrl) throw switchError;
+        // 4902 = wallet doesn't have this chain configured yet. Point it at
+        // our own /api/rpc proxy rather than a raw RPC URL, so a paid/keyed
+        // fallback endpoint never has to be exposed to the browser.
+        if ((switchError as { code?: number })?.code !== 4902) throw switchError;
         await eth.request({
           method: "wallet_addEthereumChain",
           params: [
@@ -77,7 +78,7 @@ export default function CreditsPage() {
               chainId: `0x${config.chainId.toString(16)}`,
               chainName: config.chainName,
               nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-              rpcUrls: [config.rpcUrl],
+              rpcUrls: [`${window.location.origin}/api/rpc`],
               blockExplorerUrls: [config.explorerUrl],
             },
           ],
