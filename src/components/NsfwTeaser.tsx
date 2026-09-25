@@ -14,7 +14,7 @@ function readPref(): boolean {
   }
 }
 
-export default function NsfwTeaser({ src, alt }: { src: string; alt: string }) {
+export default function NsfwTeaser({ src, alt, square = false }: { src: string; alt: string; square?: boolean }) {
   const [revealed, setRevealed] = useState(false);
   const [always, setAlways] = useState(false);
 
@@ -35,7 +35,9 @@ export default function NsfwTeaser({ src, alt }: { src: string; alt: string }) {
   };
 
   return (
-    <div className="group relative aspect-[3/4] w-full overflow-hidden rounded-xl border border-white/10">
+    <div
+      className={`group relative w-full overflow-hidden rounded-xl border border-white/10 ${square ? "aspect-square" : "aspect-[3/4]"}`}
+    >
       <Image
         src={src}
         alt={alt}

@@ -91,6 +91,20 @@ export default async function GnomePage({
           </div>
         </div>
 
+        <section className="mt-12 w-full text-left">
+          <h2 className="mb-4 text-xl font-black">More of {gnome.name}</h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {[3, 4, 5].map((n) => (
+              <NsfwTeaser
+                key={n}
+                src={`/gnomes/gallery/${gnome.id}-${n}.webp`}
+                alt={`${gnome.name}, 18+ photo ${n}`}
+                square
+              />
+            ))}
+          </div>
+        </section>
+
         <div className="mt-10 w-full">
           <NomPadBanner />
         </div>
