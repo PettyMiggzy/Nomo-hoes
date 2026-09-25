@@ -26,6 +26,8 @@ export default function CreatorDmSettings({
   const [busy, setBusy] = useState(false);
 
   const save = async (nextEnabled = enabled) => {
+    const prevEnabled = enabled;
+    setEnabled(nextEnabled); // flip the toggle right away; roll back if the save fails
     setBusy(true);
     setSaved(null);
     try {
@@ -36,10 +38,10 @@ export default function CreatorDmSettings({
       });
       const data = await res.json();
       if (!res.ok) {
+        setEnabled(prevEnabled);
         setSaved(data.error ?? "Couldn't save");
         return;
       }
-      setEnabled(nextEnabled);
       setSaved("Saved");
     } finally {
       setBusy(false);
