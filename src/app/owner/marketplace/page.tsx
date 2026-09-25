@@ -9,7 +9,6 @@ type Post = {
   gnomeId: string;
   title: string;
   kind: "photo" | "clip";
-  ownContent: boolean;
   scene: string;
   priceNomo: number;
   createdAt: string;
@@ -95,18 +94,8 @@ export default function OwnerMarketplacePage() {
               )}
               <div className="flex flex-1 flex-col gap-1 text-left text-sm">
                 <p className="font-bold text-white">
-                  {p.title}{" "}
-                  {p.ownContent && (
-                    <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                      REAL PERSON · {p.kind}
-                    </span>
-                  )}
+                  {p.title}
                 </p>
-                {p.ownContent && (
-                  <p className="text-xs text-amber-200/80">
-                    Check: only the verified creator (or clearly adult, consenting people) appear; nothing illegal.
-                  </p>
-                )}
                 <p className="font-mono text-xs text-neutral-500">{p.creatorWallet}</p>
                 <p className="text-xs text-neutral-400">{p.scene}</p>
                 <p className="text-xs text-emerald-400">{p.priceNomo} NOMO</p>

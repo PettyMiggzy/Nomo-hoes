@@ -24,7 +24,6 @@ type Entry = {
   creatorName: string;
   creatorAvatar: string | null;
   creatorWallet?: `0x${string}`;
-  ownContent?: boolean;
 };
 
 type PremiumRow = {
@@ -43,7 +42,6 @@ type PremiumRow = {
 type ListingRow = {
   id: number;
   kind: "photo" | "clip";
-  ownContent: boolean;
   title: string;
   category: string | null;
   gnomeId: string;
@@ -176,7 +174,7 @@ export default function MarketplacePage() {
 
   const gnomes = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const e of entries) if (!e.ownContent) seen.set(e.gnomeId, e.gnomeName);
+    for (const e of entries) seen.set(e.gnomeId, e.gnomeName);
     return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [entries]);
 
@@ -338,8 +336,7 @@ export default function MarketplacePage() {
                     </button>
                     <div className="flex flex-1 flex-col gap-1.5 p-3 text-left">
                       <p className="truncate text-sm font-bold text-white">
-                        {e.ownContent ? "" : `${e.gnomeName} · `}
-                        <span className={e.ownContent ? "" : "font-normal text-neutral-300"}>{e.title}</span>
+                        {e.gnomeName} · <span className="font-normal text-neutral-300">{e.title}</span>
                       </p>
                       <div className="flex items-center gap-2">
                         {e.creatorAvatar ? (

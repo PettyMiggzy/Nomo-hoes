@@ -84,7 +84,7 @@ export default function OwnerReportsPage() {
                   onClick={() => act(r, "takedown")}
                   className="rounded-full bg-red-500 px-4 py-1.5 text-xs font-bold text-black disabled:opacity-40"
                 >
-                  {r.target === "creator" ? "Revoke creator" : "Take down"}
+                  {r.target === "creator" ? "Pull creator's posts & DMs" : "Take down"}
                 </button>
                 <button
                   disabled={busy === r.id}

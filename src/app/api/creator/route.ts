@@ -24,13 +24,15 @@ export async function GET() {
   return NextResponse.json({ creator, posts, earnings, dm, dmEarnings: dmEarned });
 }
 
-// Body: { displayName, bio? } -- signs up (or edits) a creator profile. No
-// approval gate to become a creator; every post is still owner-reviewed.
+// Body: { displayName, bio?, agree } -- signs up (or edits) a creator
+// profile. New creators must confirm they're 18+ and that they'll only post
+// AI-generated content of fictional adults. No other approval gate; every
+// post is still owner-reviewed.
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session || session.owner) return NextResponse.json({ error: "Sign in with a wallet" }, { status: 401 });
 
-  let body: { displayName?: string; bio?: string };
+  let body: { displayName?: string; bio?: string; agree?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -39,6 +41,9 @@ export async function POST(request: Request) {
   const displayName = body.displayName?.trim().slice(0, MAX_NAME_LEN);
   if (!displayName) return NextResponse.json({ error: "Display name is required" }, { status: 400 });
   const bio = body.bio?.trim().slice(0, MAX_BIO_LEN) || null;
+  if (!body.agree && !(await getCreator(session.wallet))) {
+    return NextResponse.json({ error: "You must confirm you're 18+ and agree to the creator rules" }, { status: 400 });
+  }
 
   const creator = await upsertCreator(session.wallet, displayName, bio);
   return NextResponse.json({ creator });

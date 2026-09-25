@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { fileReport } from "@/lib/verification";
+import { fileReport } from "@/lib/reports";
 
 export const runtime = "nodejs";
 

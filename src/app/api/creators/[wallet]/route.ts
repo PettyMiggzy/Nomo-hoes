@@ -26,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ wal
         id: l.id,
         title: l.title,
         category: l.category,
-        gnomeName: l.ownContent ? creator.displayName : (getGnome(l.gnomeId)?.name ?? l.gnomeId),
+        gnomeName: getGnome(l.gnomeId)?.name ?? l.gnomeId,
         kind: l.kind,
         teaserUrl: l.teaserUrl,
         priceNomo: l.priceNomo,

@@ -71,12 +71,6 @@ export default function OwnerLogin() {
               Premium Content
             </Link>
             <Link
-              href="/owner/verifications"
-              className="rounded-full border border-emerald-400/50 px-6 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-400/10"
-            >
-              Creator ID Verification
-            </Link>
-            <Link
               href="/owner/reports"
               className="rounded-full border border-red-400/50 px-6 py-3 text-sm font-bold text-red-300 transition hover:bg-red-400/10"
             >

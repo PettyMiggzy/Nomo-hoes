@@ -6,7 +6,6 @@ import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { GNOMES } from "@/data/gnomes";
 import { CATEGORIES } from "@/lib/categories";
 import CreatorDmSettings from "@/components/CreatorDmSettings";
-import CreatorOwnContent from "@/components/CreatorOwnContent";
 
 type Pricing = { platformCutBps: number; creatorMinPriceNomo: number; nomoPerImage: number };
 type Creator = { wallet: string; displayName: string; bio: string | null; avatarUrl: string | null };
@@ -33,6 +32,7 @@ export default function CreatorPage() {
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
+  const [agree, setAgree] = useState(false);
 
   const [gnomeId, setGnomeId] = useState(GNOMES[0]?.id ?? "");
   const [title, setTitle] = useState("");
@@ -65,7 +65,7 @@ export default function CreatorPage() {
     const res = await fetch("/api/creator", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, bio }),
+      body: JSON.stringify({ displayName, bio, agree }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -148,7 +148,7 @@ export default function CreatorPage() {
           </span>
           <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Your Content, Your Business</h1>
           <p className="mx-auto mt-3 max-w-md text-balance text-sm text-neutral-400">
-            Post your own photos &amp; videos or AI gnome scenes, sell paid DMs, set your prices — you keep {pricing ? 100 - pricing.platformCutBps / 100 : "most"}% of
+            Create AI gnome scenes, sell paid DMs, set your prices — you keep {pricing ? 100 - pricing.platformCutBps / 100 : "most"}% of
             every sale — paid straight to your wallet, on chain, the moment someone buys.
           </p>
         </div>
@@ -178,8 +178,21 @@ export default function CreatorPage() {
                 className="rounded-lg bg-white/5 px-4 py-2 text-sm font-normal normal-case text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
             </label>
+            <label className="flex items-start gap-2 text-xs text-neutral-300">
+              <input
+                type="checkbox"
+                checked={agree}
+                onChange={(e) => setAgree(e.target.checked)}
+                className="mt-0.5 accent-emerald-400"
+              />
+              <span>
+                I&apos;m 18 or older. I&apos;ll only post AI-generated content of the site&apos;s fictional adult characters
+                — never real people, never anyone who looks underage — and I understand every post is reviewed and can be
+                removed.
+              </span>
+            </label>
             <button
-              disabled={!displayName.trim()}
+              disabled={!displayName.trim() || !agree}
               onClick={signUp}
               className="rounded-full bg-emerald-400 px-6 py-3 text-sm font-black text-black transition hover:bg-emerald-300 disabled:opacity-40"
             >
@@ -228,10 +241,8 @@ export default function CreatorPage() {
               />
             )}
 
-            {pricing && <CreatorOwnContent wallet={creator.wallet} minPrice={pricing.creatorMinPriceNomo} />}
-
             <section className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-neutral-900/60 p-5 text-left">
-              <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">New AI gnome post</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">New post</p>
               <select
                 value={gnomeId}
                 onChange={(e) => setGnomeId(e.target.value)}
