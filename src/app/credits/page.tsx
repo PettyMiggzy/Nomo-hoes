@@ -160,6 +160,26 @@ export default function CreditsPage() {
           <p className="text-sm text-neutral-400">Loading...</p>
         ) : (
           <>
+            <details className="w-full rounded-xl border border-white/10 bg-neutral-900/60 px-4 py-3 text-left text-sm">
+              <summary className="cursor-pointer font-bold text-white">How do I get USDG?</summary>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-neutral-400">
+                <li>
+                  <span className="text-neutral-200">Robinhood app (US):</span> buy USD Global Dollar (USDG) — it&apos;s a
+                  regulated dollar stablecoin, not a stock token, so US customers can buy it (Robinhood lists NY and TX as
+                  unavailable).
+                </li>
+                <li>Send it to the wallet you connected here, choosing the Robinhood Chain network.</li>
+                <li>Come back and pay — 1 USDG = 1 credit.</li>
+              </ol>
+              <p className="mt-2 text-xs text-neutral-500">
+                Already have USDG or USDC on another chain? Bridge it to Robinhood Chain with{" "}
+                <a href="https://across.to" target="_blank" rel="noopener noreferrer" className="underline">
+                  Across
+                </a>
+                , or swap below.
+              </p>
+            </details>
+
             {config.token && (
               <a
                 href={`https://app.uniswap.org/swap?chain=robinhood&outputCurrency=${config.token}`}
