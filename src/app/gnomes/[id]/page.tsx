@@ -10,6 +10,7 @@ import GnomeAd from "@/components/GnomeAd";
 import NomoAd from "@/components/NomoAd";
 import AdSlot from "@/components/AdSlot";
 import NomPadBanner from "@/components/NomPadBanner";
+import PremiumGallery from "@/components/PremiumGallery";
 
 export function generateStaticParams() {
   return GNOMES.map((g) => ({ id: g.id }));
@@ -104,6 +105,8 @@ export default async function GnomePage({
             ))}
           </div>
         </section>
+
+        <PremiumGallery gnomeId={gnome.id} gnomeName={gnome.name} />
 
         <div className="mt-10 w-full">
           <NomPadBanner />

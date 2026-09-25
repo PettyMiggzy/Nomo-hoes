@@ -25,6 +25,10 @@ export const PRICING = {
   adDays: num(process.env.AD_DAYS, 7),
   platformCutBps: num(process.env.PLATFORM_CUT_BPS, 2000),
   creatorMinPriceNomo: num(process.env.CREATOR_MIN_PRICE_NOMO, 0.02),
+  // Defaults for new premium uploads; each item's own price is editable
+  // afterwards from /owner/premium.
+  premiumPhotoNomo: num(process.env.PREMIUM_PHOTO_NOMO, 0.1),
+  premiumClipNomo: num(process.env.PREMIUM_CLIP_NOMO, 0.3),
 };
 
 // Splits a marketplace sale so the two amounts always sum exactly to
