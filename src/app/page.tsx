@@ -76,6 +76,9 @@ export default function Home() {
           <Link href="/marketplace" className="hover:text-white">
             Marketplace
           </Link>
+          <Link href="/security" className="hover:text-white">
+            Security
+          </Link>
           <Link href="/credits" className="hover:text-white">
             Credits
           </Link>
