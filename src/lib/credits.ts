@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { PRICING } from "@/lib/pricing";
 
 export const GUEST_FREE_MESSAGES = PRICING.guestFreeMessages;
-const { messagesPerBatch: MESSAGES_PER_BATCH, nomoPerBatch: NOMO_PER_BATCH } = PRICING;
+const { messagesPerBatch: MESSAGES_PER_BATCH, creditsPerBatch: CREDITS_PER_BATCH } = PRICING;
 
 function db() {
   const url = process.env.DATABASE_URL;
@@ -106,10 +106,10 @@ export async function canSendMessage(
   if (used < free) return { ok: true };
   const nextIsNewBatch = (used - free) % MESSAGES_PER_BATCH === 0;
   if (!nextIsNewBatch) return { ok: true };
-  if ((await creditBalance(wallet)) >= NOMO_PER_BATCH) return { ok: true };
+  if ((await creditBalance(wallet)) >= CREDITS_PER_BATCH) return { ok: true };
   return {
     ok: false,
-    reason: `Free messages used up for today. ${NOMO_PER_BATCH} NOMO in credits buys the next ${MESSAGES_PER_BATCH} messages — or grab a VIP Pass for ${PRICING.vipFreeMessages} free a day.`,
+    reason: `Free messages used up for today. $${CREDITS_PER_BATCH} in credits buys the next ${MESSAGES_PER_BATCH} messages — or grab a VIP Pass for ${PRICING.vipFreeMessages} free a day.`,
   };
 }
 
@@ -128,7 +128,7 @@ export async function recordMessage(wallet: string, gnomeId: string): Promise<bo
     RETURNING messages_used`;
   const used = Number(rows[0].messages_used);
   if (used > free && (used - free - 1) % MESSAGES_PER_BATCH === 0) {
-    return debitCredits(wallet, NOMO_PER_BATCH, `chat:${gnomeId}`);
+    return debitCredits(wallet, CREDITS_PER_BATCH, `chat:${gnomeId}`);
   }
   return true;
 }
@@ -172,7 +172,7 @@ export async function usageStats(wallet: string) {
     freeMessagesRemaining: Math.max(0, free - used),
     creditsAvailable: balance,
     vipUntil: vip?.toISOString() ?? null,
-    chargePerBatch: NOMO_PER_BATCH,
+    chargePerBatch: CREDITS_PER_BATCH,
     messagesPerBatch: MESSAGES_PER_BATCH,
   };
 }

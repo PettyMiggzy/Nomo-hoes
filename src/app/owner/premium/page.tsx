@@ -72,7 +72,7 @@ export default function OwnerPremiumPage() {
         {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{error}</p>}
         {revenue && (
           <p className="mb-6 text-sm text-neutral-400">
-            {revenue.sales} unlocks · <span className="font-bold text-emerald-400">{revenue.nomo} NOMO</span> earned
+            {revenue.sales} unlocks · <span className="font-bold text-emerald-400">${revenue.nomo.toFixed(2)}</span> earned
           </p>
         )}
         {items && items.length === 0 && <p className="text-center text-neutral-500">No premium items yet.</p>}
@@ -114,7 +114,7 @@ export default function OwnerPremiumPage() {
                     className="w-20 rounded border border-white/10 bg-black px-2 py-1 text-white"
                     inputMode="decimal"
                   />
-                  <span className="text-neutral-500">NOMO</span>
+                  <span className="text-neutral-500">$</span>
                   <button
                     disabled={busy === i.id || !(Number(prices[i.id]) > 0)}
                     onClick={() => patch(i.id, { priceNomo: Number(prices[i.id]) })}

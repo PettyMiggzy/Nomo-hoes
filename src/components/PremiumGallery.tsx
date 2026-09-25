@@ -1,17 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
-import { unlockPremium, type PayConfig } from "@/lib/unlockClient";
+import { NeedCredits, unlockPremium } from "@/lib/unlockClient";
+import { usd } from "@/lib/money";
 
 type Item = { id: number; kind: "photo" | "clip"; title: string; teaserUrl: string; priceNomo: number; unlocked: boolean };
-
-const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 });
 
 export default function PremiumGallery({ gnomeId, gnomeName }: { gnomeId: string; gnomeName: string }) {
   const [items, setItems] = useState<Item[]>([]);
   const [session, setSession] = useState<SessionInfo | null>(null);
-  const [config, setConfig] = useState<PayConfig | null>(null);
+  const [needTopUp, setNeedTopUp] = useState(false);
   const [media, setMedia] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -39,23 +39,19 @@ export default function PremiumGallery({ gnomeId, gnomeName }: { gnomeId: string
 
   const onConnected = (s: SessionInfo) => {
     setSession(s);
-    fetch("/api/credits")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((c) => c && setConfig(c))
-      .catch(() => {});
     load();
   };
 
   const unlock = async (item: Item) => {
-    const eth = window.ethereum;
-    if (!session || !eth) return;
+    if (!session) return;
     setBusy(item.id);
     setStatus(null);
+    setNeedTopUp(false);
     try {
-      await unlockPremium(eth, session.wallet, config, item, setStatus);
+      await unlockPremium(item);
       setItems((all) => all.map((i) => (i.id === item.id ? { ...i, unlocked: true } : i)));
-      setStatus(null);
     } catch (e) {
+      setNeedTopUp(e instanceof NeedCredits);
       setStatus(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(null);
@@ -75,7 +71,16 @@ export default function PremiumGallery({ gnomeId, gnomeName }: { gnomeId: string
         </div>
         {!session && <WalletConnect compact onConnected={onConnected} />}
       </div>
-      {status && <p className="mb-3 break-all text-xs text-neutral-300">{status}</p>}
+      {status && (
+        <p className="mb-3 text-xs text-neutral-300">
+          {status}{" "}
+          {needTopUp && (
+            <Link href="/credits" className="font-bold text-pink-400 underline">
+              Top up →
+            </Link>
+          )}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {items.map((item) => {
@@ -110,11 +115,11 @@ export default function PremiumGallery({ gnomeId, gnomeName }: { gnomeId: string
                 <p className="truncate text-sm font-bold text-white">{item.title}</p>
                 {!item.unlocked && (
                   <button
-                    disabled={!session || session.owner || !config || busy === item.id}
+                    disabled={!session || session.owner || busy === item.id}
                     onClick={() => unlock(item)}
                     className="mt-1 rounded-full bg-pink-500 px-3 py-1.5 text-xs font-bold text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {busy === item.id ? "Processing..." : session ? `Unlock — ${fmt(item.priceNomo)} NOMO` : `${fmt(item.priceNomo)} NOMO`}
+                    {busy === item.id ? "Processing..." : session ? `Unlock — ${usd(item.priceNomo)}` : usd(item.priceNomo)}
                   </button>
                 )}
               </div>

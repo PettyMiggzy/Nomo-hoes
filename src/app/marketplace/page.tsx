@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
-import { buyCreatorPost, unlockPremium, type PayConfig } from "@/lib/unlockClient";
+import { buyCreatorPost, NeedCredits, unlockPremium } from "@/lib/unlockClient";
+import { usd } from "@/lib/money";
 import ReportButton from "@/components/ReportButton";
 
 // One grid mixes the house's own premium content with creator posts.
@@ -57,11 +58,11 @@ type ListingRow = {
 
 type Sort = "new" | "price-asc" | "price-desc";
 
-const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 });
 
 export default function MarketplacePage() {
   const [session, setSession] = useState<SessionInfo | null>(null);
-  const [config, setConfig] = useState<PayConfig | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [needTopUp, setNeedTopUp] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [vip, setVip] = useState(false);
   const [media, setMedia] = useState<Record<string, string>>({});
@@ -118,28 +119,32 @@ export default function MarketplacePage() {
 
   const onConnected = (s: SessionInfo) => {
     setSession(s);
-    fetch("/api/credits")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((c) => c && setConfig(c))
-      .catch(() => {});
+    refreshBalance();
     load();
   };
 
+  const refreshBalance = () =>
+    fetch("/api/credits")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => c && setBalance(c.creditsAvailable))
+      .catch(() => {});
+
   const buy = async (e: Entry) => {
-    const eth = window.ethereum;
-    if (!session || !eth) return;
+    if (!session) return;
     setBusy(e.key);
     setStatus(null);
+    setNeedTopUp(false);
     try {
       if (e.source === "official") {
-        await unlockPremium(eth, session.wallet, config, e, setStatus);
-      } else if (e.creatorWallet) {
-        const url = await buyCreatorPost(eth, session.wallet, config, { ...e, creatorWallet: e.creatorWallet }, setStatus);
+        await unlockPremium(e);
+      } else {
+        const url = await buyCreatorPost(e);
         if (url) setMedia((m) => ({ ...m, [e.key]: url }));
       }
       setEntries((all) => all.map((x) => (x.key === e.key ? { ...x, unlocked: true } : x)));
-      setStatus(null);
+      refreshBalance();
     } catch (err) {
+      setNeedTopUp(err instanceof NeedCredits);
       setStatus(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setBusy(null);
@@ -252,7 +257,7 @@ export default function MarketplacePage() {
         <div className="flex flex-col items-center text-center">
           <h1 className="text-3xl font-black tracking-tight sm:text-5xl">Marketplace</h1>
           <p className="mx-auto mt-3 max-w-lg text-balance text-neutral-400">
-            Explicit photos and clips of every gnome, from us and from creators. Unlock with NOMO, keep forever.
+            Explicit photos and clips of every gnome, from us and from creators. Unlock with credits, keep forever.
           </p>
           {!session && (
             <div className="mt-6">
@@ -264,7 +269,24 @@ export default function MarketplacePage() {
               👑 VIP: everything here is unlocked for you
             </p>
           )}
-          {status && <p className="mt-4 max-w-md break-all text-xs text-neutral-300">{status}</p>}
+          {session && !session.owner && balance !== null && (
+            <p className="mt-4 text-sm text-neutral-400">
+              Credits: <span className="font-bold text-white">{usd(balance)}</span> ·{" "}
+              <Link href="/credits" className="font-bold text-pink-400 hover:text-pink-300">
+                Top up
+              </Link>
+            </p>
+          )}
+          {status && (
+            <p className="mt-4 max-w-md text-xs text-neutral-300">
+              {status}{" "}
+              {needTopUp && (
+                <Link href="/credits" className="font-bold text-pink-400 underline">
+                  Top up →
+                </Link>
+              )}
+            </p>
+          )}
         </div>
 
         <div className="mt-8 flex flex-col gap-6 lg:flex-row">
@@ -372,11 +394,11 @@ export default function MarketplacePage() {
                         </button>
                       ) : (
                         <button
-                          disabled={!session || session.owner || !config || busy === e.key}
+                          disabled={!session || session.owner || busy === e.key}
                           onClick={() => buy(e)}
                           className="mt-auto rounded-full bg-pink-500 px-3 py-1.5 text-xs font-bold text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {busy === e.key ? "Processing..." : `${session ? "Unlock — " : ""}${fmt(e.priceNomo)} NOMO`}
+                          {busy === e.key ? "Processing..." : `${session ? "Unlock — " : ""}${usd(e.priceNomo)}`}
                         </button>
                       )}
                     </div>

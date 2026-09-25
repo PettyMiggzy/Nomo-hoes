@@ -12,16 +12,16 @@ const NOHOES_CA = process.env.NOHOES_CONTRACT;
 
 const TOKEN_SHEET = [
   { label: "Chain", value: "Robinhood (4663)" },
-  { label: "Pay with", value: "$NOMO" },
-  { label: "VIP Pass", value: `${fmt(PRICING.vipPriceNomo)} NOMO or burn ${fmt(PRICING.vipPriceNohoes)} $NOHOES` },
+  { label: "Pay with", value: "Credits (USDG)" },
+  { label: "VIP Pass", value: `${fmt(PRICING.vipPriceCredits)} or burn ${PRICING.vipPriceNohoes} $NOHOES` },
   { label: "$NOHOES supply", value: "69" },
 ];
 
 const FEATURED = GNOMES.slice(0, 8);
 
-const [gardener, lord] = PRICING.packs;
-const gardenerPerks = packPerks(gardener.nomo);
-const lordPerks = packPerks(lord.nomo);
+const [, gardener, lord] = PRICING.packs;
+const gardenerPerks = packPerks(gardener.usd);
+const lordPerks = packPerks(lord.usd);
 
 const PACKAGES = [
   {
@@ -35,11 +35,12 @@ const PACKAGES = [
   },
   {
     name: "VIP Pass",
-    price: `${fmt(PRICING.vipPriceNomo)} NOMO`,
-    detail: `or burn ${fmt(PRICING.vipPriceNohoes)} $NOHOES · ${PRICING.vipDays} days`,
+    price: fmt(PRICING.vipPriceCredits),
+    detail: `or burn ${PRICING.vipPriceNohoes} $NOHOES · ${PRICING.vipDays} days`,
     perks: [
       `${PRICING.vipFreeMessages} free messages a day`,
       `${PRICING.vipFreeMessages / PRICING.walletFreeMessages}x a regular wallet`,
+      "Every premium photo & clip unlocked",
       "VIP badge",
     ],
     cta: { label: "Get VIP", href: "/credits" },
@@ -48,18 +49,18 @@ const PACKAGES = [
   },
   {
     name: gardener.name,
-    price: `${fmt(gardener.nomo)} NOMO`,
+    price: fmt(gardener.usd),
     detail: "Most popular",
-    perks: [`${fmt(gardenerPerks.messages)} extra messages`, `or ${fmt(gardenerPerks.pics)} custom 18+ pics`, "Credits never expire"],
+    perks: [`${gardenerPerks.messages} extra messages`, `or ${gardenerPerks.pics} custom 18+ pics`, "Credits never expire"],
     cta: { label: "Buy Credits", href: "/credits" },
     featured: true,
     vip: false,
   },
   {
     name: lord.name,
-    price: `${fmt(lord.nomo)} NOMO`,
+    price: fmt(lord.usd),
     detail: "For the committed",
-    perks: [`${fmt(lordPerks.messages)} extra messages`, `or ${fmt(lordPerks.pics)} custom 18+ pics`, "Credits never expire"],
+    perks: [`${lordPerks.messages} extra messages`, `or ${lordPerks.pics} custom 18+ pics`, "Credits never expire"],
     cta: { label: "Buy Credits", href: "/credits" },
     featured: false,
     vip: false,
@@ -148,7 +149,7 @@ export default function Home() {
         <section className="mx-auto w-full max-w-5xl px-6 pb-20">
           <div className="mb-6 text-center">
             <h2 className="text-sm font-bold uppercase tracking-widest text-neutral-400">Packages</h2>
-            <p className="mt-2 text-neutral-400">Everyone gets free messages. Keep going with $NOMO.</p>
+            <p className="mt-2 text-neutral-400">Everyone gets free messages. Keep going with credits — top up with USDG.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {PACKAGES.map((p) => (
@@ -227,7 +228,7 @@ export default function Home() {
               <h2 className="font-mono text-sm font-bold uppercase tracking-widest text-neutral-400">
                 Access Sheet
               </h2>
-              <span className="font-mono text-xs text-neutral-500">$NOMO</span>
+              <span className="font-mono text-xs text-neutral-500">USDG</span>
             </div>
             <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4">
               {TOKEN_SHEET.map((item) => (

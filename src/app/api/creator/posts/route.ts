@@ -15,7 +15,7 @@ export const maxDuration = 60;
 
 const MAX_SCENE_LEN = 300;
 const MAX_TITLE_LEN = 60;
-const GENERATE_COST = PRICING.nomoPerImage;
+const GENERATE_COST = PRICING.creditsPerImage;
 
 // Body: { gnomeId, title, scene, priceNomo } -- generates one image (the
 // creator pays the same per-image cost as any private generation), stores it
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
   }
   const category = body.category;
   if (!isCategory(category)) return NextResponse.json({ error: "Pick a category" }, { status: 400 });
-  if (!Number.isFinite(price) || price < PRICING.creatorMinPriceNomo) {
-    return NextResponse.json({ error: `Price must be at least ${PRICING.creatorMinPriceNomo} NOMO` }, { status: 400 });
+  if (!Number.isFinite(price) || price < PRICING.creatorMinPrice) {
+    return NextResponse.json({ error: `Price must be at least $${PRICING.creatorMinPrice}` }, { status: 400 });
   }
 
   const paid = await debitCredits(session.wallet, GENERATE_COST, `creator-post:${gnome.id}`);

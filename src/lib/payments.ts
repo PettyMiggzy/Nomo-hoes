@@ -16,20 +16,28 @@ export class PaymentError extends Error {
 
 const envAddress = (v: string | undefined) => (v && isAddress(v) ? v : null);
 
+// USDG (Global Dollar, 6 decimals) on Robinhood Chain -- per Paxos and
+// Robinhood Chain docs, confirmed on chain. Top-ups are paid in it and
+// creator cash-outs are sent in it.
+export const USDG_MAINNET = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
+
 export function paymentConfig() {
   return {
     treasury: envAddress(process.env.TREASURY_ADDRESS),
-    token: envAddress(process.env.NOMO_CONTRACT),
+    token: envAddress(process.env.USDG_CONTRACT) ?? USDG_MAINNET,
+    nomoToken: envAddress(process.env.NOMO_CONTRACT),
     nohoesToken: envAddress(process.env.NOHOES_CONTRACT),
     burnAddress: BURN_ADDRESS,
   };
 }
 
 // Confirms `txHash` is a successful, confirmed transfer of `token` from
-// `wallet` to `to`, and returns the total amount moved in whole tokens.
+// `wallet` (or from anyone, when `wallet` is null -- e.g. a payout the owner
+// sent from whichever wallet) to `to`, and returns the total amount moved in
+// whole tokens.
 export async function verifyTokenTransfer(
   txHash: Hash,
-  wallet: string,
+  wallet: string | null,
   token: string,
   to: string,
 ): Promise<number> {
@@ -55,7 +63,7 @@ export async function verifyTokenTransfer(
       const ev = decodeEventLog({ abi: erc20Abi, data: log.data, topics: log.topics });
       if (
         ev.eventName === "Transfer" &&
-        ev.args.from.toLowerCase() === wallet.toLowerCase() &&
+        (wallet === null || ev.args.from.toLowerCase() === wallet.toLowerCase()) &&
         ev.args.to.toLowerCase() === to.toLowerCase()
       ) {
         total += ev.args.value;

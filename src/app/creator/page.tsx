@@ -6,8 +6,10 @@ import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { GNOMES } from "@/data/gnomes";
 import { CATEGORIES } from "@/lib/categories";
 import CreatorDmSettings from "@/components/CreatorDmSettings";
+import CreatorEarnings from "@/components/CreatorEarnings";
+import { usd } from "@/lib/money";
 
-type Pricing = { platformCutBps: number; creatorMinPriceNomo: number; nomoPerImage: number };
+type Pricing = { platformCutBps: number; creatorMinPrice: number; creditsPerImage: number };
 type Creator = { wallet: string; displayName: string; bio: string | null; avatarUrl: string | null };
 type Post = {
   id: number;
@@ -19,7 +21,7 @@ type Post = {
   createdAt: string;
 };
 
-const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 });
+const fmt = usd;
 
 export default function CreatorPage() {
   const [session, setSession] = useState<SessionInfo | null>(null);
@@ -56,7 +58,7 @@ export default function CreatorPage() {
     if (configRes.ok) {
       const data = await configRes.json();
       setPricing(data.pricing);
-      setPrice((p) => (p === 0 ? data.pricing.creatorMinPriceNomo : p));
+      setPrice((p) => (p === 0 ? data.pricing.creatorMinPrice : p));
     }
   };
 
@@ -88,7 +90,7 @@ export default function CreatorPage() {
       if (!res.ok) {
         setStatus(
           data.error === "insufficient_credits"
-            ? `You need ${data.required} NOMO in credits to generate (have ${data.available}). Buy some on the /credits page.`
+            ? `You need ${fmt(data.required)} in credits to generate (have ${fmt(data.available)}). Top up on the /credits page.`
             : (data.error ?? "Something went wrong"),
         );
         return;
@@ -149,7 +151,7 @@ export default function CreatorPage() {
           <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Your Content, Your Business</h1>
           <p className="mx-auto mt-3 max-w-md text-balance text-sm text-neutral-400">
             Create AI gnome scenes, sell paid DMs, set your prices — you keep {pricing ? 100 - pricing.platformCutBps / 100 : "most"}% of
-            every sale — paid straight to your wallet, on chain, the moment someone buys.
+            every sale, cashed out 1:1 in USDG.
           </p>
         </div>
 
@@ -226,10 +228,12 @@ export default function CreatorPage() {
                 </div>
                 <div>
                   <p className="text-xl font-black text-emerald-400">{fmt(earnings.earnedNomo)}</p>
-                  <p className="text-[11px] text-neutral-500">NOMO Earned</p>
+                  <p className="text-[11px] text-neutral-500">Earned from posts</p>
                 </div>
               </div>
             )}
+
+            <CreatorEarnings />
 
             {pricing && (
               <CreatorDmSettings
@@ -279,13 +283,13 @@ export default function CreatorPage() {
                 className="rounded-lg bg-white/5 px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
               <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Price (NOMO)
+                Price ($)
                 <input
                   type="number"
-                  min={pricing?.creatorMinPriceNomo ?? 0}
+                  min={pricing?.creatorMinPrice ?? 0}
                   step={0.01}
                   value={price}
-                  onChange={(e) => setPrice(Math.max(pricing?.creatorMinPriceNomo ?? 0, Number(e.target.value)))}
+                  onChange={(e) => setPrice(Math.max(pricing?.creatorMinPrice ?? 0, Number(e.target.value)))}
                   className="rounded-lg bg-white/5 px-4 py-2 text-sm font-normal normal-case text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
                 />
               </label>
@@ -294,7 +298,7 @@ export default function CreatorPage() {
                 onClick={submitPost}
                 className="rounded-full bg-pink-500 px-6 py-3 text-sm font-black text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {pending ? "Generating..." : `Generate & Submit (${pricing ? fmt(pricing.nomoPerImage) : "..."} NOMO)`}
+                {pending ? "Generating..." : `Generate & Submit (${pricing ? fmt(pricing.creditsPerImage) : "..."})`}
               </button>
               {status && <p className="text-xs text-red-400">{status}</p>}
             </section>
@@ -316,7 +320,7 @@ export default function CreatorPage() {
                   )}
                   <div className="flex-1">
                     <p className="text-sm font-bold text-white">{p.title}</p>
-                    <p className="text-xs text-neutral-500">{fmt(p.priceNomo)} NOMO</p>
+                    <p className="text-xs text-neutral-500">{fmt(p.priceNomo)}</p>
                   </div>
                   <span
                     className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${

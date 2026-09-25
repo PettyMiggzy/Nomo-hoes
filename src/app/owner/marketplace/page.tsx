@@ -98,7 +98,7 @@ export default function OwnerMarketplacePage() {
                 </p>
                 <p className="font-mono text-xs text-neutral-500">{p.creatorWallet}</p>
                 <p className="text-xs text-neutral-400">{p.scene}</p>
-                <p className="text-xs text-emerald-400">{p.priceNomo} NOMO</p>
+                <p className="text-xs text-emerald-400">${p.priceNomo}</p>
                 <div className="mt-2 flex gap-2">
                   <button
                     disabled={busy === p.id}

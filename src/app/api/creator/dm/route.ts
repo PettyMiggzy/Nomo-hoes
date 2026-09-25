@@ -14,8 +14,8 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as { enabled?: boolean; priceNomo?: number };
   const price = Number(body.priceNomo);
-  if (!Number.isFinite(price) || price < PRICING.dmMinPriceNomo) {
-    return NextResponse.json({ error: `Price must be at least ${PRICING.dmMinPriceNomo} NOMO per message` }, { status: 400 });
+  if (!Number.isFinite(price) || price < PRICING.dmMinPrice) {
+    return NextResponse.json({ error: `Price must be at least $${PRICING.dmMinPrice} per message` }, { status: 400 });
   }
   await setDmSettings(session.wallet, Boolean(body.enabled), Math.round(price * 1e6) / 1e6);
   return NextResponse.json({ success: true });

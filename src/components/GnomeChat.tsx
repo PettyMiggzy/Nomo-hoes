@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usd } from "@/lib/money";
 import { useRef, useState } from "react";
 import WalletConnect, { type SessionInfo } from "./WalletConnect";
 import type { Gnome } from "@/data/gnomes";
@@ -14,7 +15,15 @@ type Stats = {
 
 const MAX_LEN = 500;
 
-export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFree: number }) {
+export default function GnomeChat({
+  gnome,
+  guestFree,
+  picPrice,
+}: {
+  gnome: Gnome;
+  guestFree: number;
+  picPrice: number;
+}) {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -59,7 +68,7 @@ export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFre
       if (res.status === 403) {
         const data = await res.json();
         setGate("credits");
-        setGateDetail(`Private pics cost ${data.required} NOMO — you have ${Number(data.available).toFixed(2)}.`);
+        setGateDetail(`Private pics cost ${usd(Number(data.required))} in credits — you have ${usd(Number(data.available))}.`);
         return;
       }
       if (!res.ok) throw new Error();
@@ -129,7 +138,7 @@ export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFre
         ? `${stats.vipUntil ? "VIP · " : ""}${
             stats.freeMessagesRemaining > 0
               ? `${stats.freeMessagesRemaining} free msgs left today`
-              : `${stats.creditsAvailable.toFixed(2)} NOMO credits`
+              : `${usd(stats.creditsAvailable)} in credits`
           }`
         : "Free daily msgs with your wallet"
       : `${guestRemaining} free msgs left · no wallet needed`;
@@ -247,7 +256,7 @@ export default function GnomeChat({ gnome, guestFree }: { gnome: Gnome; guestFre
           disabled={picPending || !scene.trim()}
           className="whitespace-nowrap rounded-full bg-violet-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-30"
         >
-          Get pic{!session?.owner && <span className="hidden sm:inline"> · 0.5 NOMO</span>}
+          Get pic{!session?.owner && <span className="hidden sm:inline"> · {usd(picPrice)}</span>}
         </button>
       </form>
     </div>

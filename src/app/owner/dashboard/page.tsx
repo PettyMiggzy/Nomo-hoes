@@ -87,8 +87,7 @@ export default function OwnerDashboard() {
                 <p className="text-xs font-bold uppercase tracking-widest text-pink-400">Revenue</p>
                 <p className="mt-1 text-2xl font-black text-white">{usd(stats.usdRevenue)}</p>
                 <p className="text-xs text-neutral-500">
-                  {stats.nomoRevenue.toLocaleString("en-US", { maximumFractionDigits: 4 })} NOMO ·{" "}
-                  {stats.vipActivations} VIP
+                  USDG top-ups today · {stats.vipActivations} VIP
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5">

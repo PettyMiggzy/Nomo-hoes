@@ -1,33 +1,24 @@
 import { NextResponse } from "next/server";
-import { isAddress, isHash } from "viem";
+import { isAddress } from "viem";
 import { getSession } from "@/lib/auth";
 import { getDmSettings, recordBundle } from "@/lib/dm";
-import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
+import { chargeCreatorSale, creditRef } from "@/lib/earnings";
 import { PRICING, splitSale } from "@/lib/pricing";
-import { claimTxs, releaseTxs } from "@/lib/txGuard";
 
 export const runtime = "nodejs";
 
-// Body: { creator, messages, creatorTxHash, treasuryTxHash } -- the fan paid a
-// bundle of `messages` at the creator's price: the creator's cut straight to
-// their wallet, the platform cut to the treasury. Verifies both, then credits.
+// Body: { creator, messages } -- buys a bundle of `messages` at the
+// creator's per-message price with credits: the creator's cut (80%) goes to
+// their cash-out balance, the platform's cut stays in the pool.
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session || session.owner) return NextResponse.json({ error: "Sign in with a wallet" }, { status: 401 });
 
-  const body = (await request.json().catch(() => ({}))) as {
-    creator?: string;
-    messages?: number;
-    creatorTxHash?: string;
-    treasuryTxHash?: string;
-  };
+  const body = (await request.json().catch(() => ({}))) as { creator?: string; messages?: number };
   const creator = body.creator;
   const messages = Number(body.messages);
   if (!creator || !isAddress(creator)) return NextResponse.json({ error: "Invalid creator" }, { status: 400 });
   if (!PRICING.dmBundles.includes(messages)) return NextResponse.json({ error: "Invalid bundle" }, { status: 400 });
-  if (!body.creatorTxHash || !isHash(body.creatorTxHash) || !body.treasuryTxHash || !isHash(body.treasuryTxHash)) {
-    return NextResponse.json({ error: "Missing or invalid transaction hashes" }, { status: 400 });
-  }
   if (creator.toLowerCase() === session.wallet.toLowerCase()) {
     return NextResponse.json({ error: "You can't message yourself" }, { status: 400 });
   }
@@ -35,42 +26,12 @@ export async function POST(request: Request) {
   const dm = await getDmSettings(creator);
   if (!dm?.enabled || !dm.priceNomo) return NextResponse.json({ error: "This creator isn't taking messages" }, { status: 404 });
 
-  const { treasury, token } = paymentConfig();
-  if (!treasury || !token) return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });
-
-  // Priced at the creator's current rate; if they raised it mid-purchase the
-  // fan's payment comes up short and is rejected rather than under-credited.
-  const { creatorCut, platformCut } = splitSale(Math.round(dm.priceNomo * messages * 1e6) / 1e6);
-
-  let creatorAmount: number;
-  let treasuryAmount: number;
-  try {
-    [creatorAmount, treasuryAmount] = await Promise.all([
-      verifyTokenTransfer(body.creatorTxHash, session.wallet, token, creator),
-      verifyTokenTransfer(body.treasuryTxHash, session.wallet, token, treasury),
-    ]);
-  } catch (e) {
-    if (e instanceof PaymentError) return NextResponse.json({ error: e.message }, { status: e.status });
-    console.error("verifyTokenTransfer error", e);
-    return NextResponse.json({ error: "Could not verify payment" }, { status: 502 });
-  }
-  if (creatorAmount < creatorCut - 1e-6) {
-    return NextResponse.json({ error: `The creator payment was short (${creatorAmount} of ${creatorCut} NOMO)` }, { status: 400 });
-  }
-  if (treasuryAmount < platformCut - 1e-6) {
-    return NextResponse.json({ error: `The platform payment was short (${treasuryAmount} of ${platformCut} NOMO)` }, { status: 400 });
-  }
-
-  if (!(await claimTxs(`dm:${creator.toLowerCase()}`, body.creatorTxHash, body.treasuryTxHash))) {
-    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
-  }
-  let ok: boolean;
-  try {
-    ok = await recordBundle(creator, session.wallet, messages, creatorAmount, body.creatorTxHash, body.treasuryTxHash);
-  } catch (e) {
-    await releaseTxs(body.creatorTxHash, body.treasuryTxHash);
-    throw e;
-  }
-  if (!ok) return NextResponse.json({ error: "This payment was already redeemed" }, { status: 400 });
+  const total = Math.round(dm.priceNomo * messages * 1e6) / 1e6;
+  const { creatorCut } = splitSale(total);
+  const result = await chargeCreatorSale(session.wallet, creator, total, `dm:${creator.toLowerCase()}`, () =>
+    recordBundle(creator, session.wallet, messages, creatorCut, creditRef(), creditRef()),
+  );
+  if (result === "insufficient") return NextResponse.json({ error: "insufficient_credits", required: total }, { status: 402 });
+  if (result !== "ok") return NextResponse.json({ error: "Couldn't complete that purchase" }, { status: 500 });
   return NextResponse.json({ success: true });
 }

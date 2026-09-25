@@ -75,7 +75,7 @@ export default async function GnomePage({
             {teaser(1)}
             {teaser(2)}
           </aside>
-          <GnomeChat gnome={gnome} guestFree={PRICING.guestFreeMessages} />
+          <GnomeChat gnome={gnome} guestFree={PRICING.guestFreeMessages} picPrice={PRICING.creditsPerImage} />
           <aside className="hidden flex-col gap-4 lg:sticky lg:top-6 lg:flex">
             <GnomeAd gnomes={ads} />
             <AdSlot />

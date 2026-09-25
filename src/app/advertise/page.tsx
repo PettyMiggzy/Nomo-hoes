@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
-import { ensureChain, sendTokenTransfer } from "@/lib/walletTx";
+import { usd } from "@/lib/money";
 
 type Config = {
   owner: boolean;
@@ -13,10 +13,9 @@ type Config = {
   chainId: number;
   chainName: string;
   explorerUrl: string;
-  pricing: { adPriceNomo: number; adDays: number };
+  pricing: { adPriceCredits: number; adDays: number };
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/webm"];
 
 export default function AdvertisePage() {
@@ -51,12 +50,7 @@ export default function AdvertisePage() {
   };
 
   const submit = async () => {
-    const eth = window.ethereum;
-    if (!config || !session || !eth || !file) return;
-    if (!config.treasury || !config.token) {
-      setStatus("Ad payments aren't configured yet.");
-      return;
-    }
+    if (!config || !session || !file) return;
     let cleanLink: string | null = null;
     if (linkUrl.trim()) {
       try {
@@ -75,37 +69,23 @@ export default function AdvertisePage() {
       const mediaType = file.type.startsWith("video/") ? "video" : "image";
       const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/ads/upload" });
 
-      await ensureChain(eth, config.chainId, config.chainName, config.explorerUrl);
-
-      setStatus("Confirm the payment in your wallet...");
-      const txHash = await sendTokenTransfer(
-        eth,
-        session.wallet as `0x${string}`,
-        config.token,
-        config.treasury,
-        config.pricing.adPriceNomo,
-      );
-
-      setStatus("Waiting for the payment to confirm on chain...");
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const res = await fetch("/api/ads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ txHash, mediaUrl: blob.url, mediaType, linkUrl: cleanLink }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setDone(true);
-          setStatus(null);
-          return;
-        }
-        if (res.status !== 409 || data.error === "This transaction was already redeemed") {
-          setStatus(data.error ?? "Something went wrong");
-          return;
-        }
-        await sleep(3000);
+      setStatus("Submitting...");
+      const res = await fetch("/api/ads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaUrl: blob.url, mediaType, linkUrl: cleanLink }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDone(true);
+        setStatus(null);
+        return;
       }
-      setStatus(`Still not confirmed. Your payment is safe — tx ${txHash}. Refresh and try again shortly.`);
+      setStatus(
+        data.error === "insufficient_credits"
+          ? `You need ${usd(Number(data.required))} in credits — top up on the Credits page, then submit again.`
+          : (data.error ?? "Something went wrong"),
+      );
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -206,13 +186,18 @@ export default function AdvertisePage() {
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">3. Pay &amp; submit</p>
               <button
-                disabled={pending || !file || !config.treasury || !config.token}
+                disabled={pending || !file}
                 onClick={submit}
                 className="mt-2 w-full rounded-full bg-emerald-400 px-6 py-3 text-sm font-black text-black transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {pending ? "Processing..." : `Pay ${p?.adPriceNomo ?? 5} NOMO — Run for ${p?.adDays ?? 7} days`}
+                {pending ? "Processing..." : `Pay ${usd(p?.adPriceCredits ?? 25)} in credits — Run for ${p?.adDays ?? 7} days`}
               </button>
-              {!config.treasury && <p className="mt-2 text-[11px] text-neutral-500">Ad payments open soon.</p>}
+              <p className="mt-2 text-[11px] text-neutral-500">
+                Need credits?{" "}
+                <Link href="/credits" className="text-emerald-300 underline">
+                  Top up with USDG
+                </Link>
+              </p>
             </div>
 
             {status && <p className="break-all text-xs text-neutral-300">{status}</p>}

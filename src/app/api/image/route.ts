@@ -9,7 +9,7 @@ import { logUsage } from "@/lib/usage";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const NOMO_PER_IMAGE = PRICING.nomoPerImage;
+const CREDITS_PER_IMAGE = PRICING.creditsPerImage;
 const MAX_SCENE_LEN = 300;
 
 export async function POST(request: Request) {
@@ -32,12 +32,12 @@ export async function POST(request: Request) {
 
   // Charge up front so concurrent requests can't overspend; refund on failure.
   if (!session.owner) {
-    const paid = await debitCredits(session.wallet, NOMO_PER_IMAGE, `image:${gnome.id}`);
+    const paid = await debitCredits(session.wallet, CREDITS_PER_IMAGE, `image:${gnome.id}`);
     if (!paid) {
       return NextResponse.json(
         {
           error: "insufficient_credits",
-          required: NOMO_PER_IMAGE,
+          required: CREDITS_PER_IMAGE,
           available: await creditBalance(session.wallet),
         },
         { status: 403 },
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error("Venice image error", e);
     if (!session.owner) {
-      await grantCredits(session.wallet, NOMO_PER_IMAGE, `refund:image:${gnome.id}`);
+      await grantCredits(session.wallet, CREDITS_PER_IMAGE, `refund:image:${gnome.id}`);
     }
     return NextResponse.json({ error: "Image generation failed" }, { status: 502 });
   }

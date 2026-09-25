@@ -22,7 +22,7 @@ async function requireOwner() {
 export async function GET() {
   if (!(await requireOwner())) return NextResponse.json({ error: "Owner only" }, { status: 403 });
   const [items, revenue] = await Promise.all([allItems(), premiumRevenue()]);
-  return NextResponse.json({ items, revenue, defaults: { photo: PRICING.premiumPhotoNomo, clip: PRICING.premiumClipNomo } });
+  return NextResponse.json({ items, revenue, defaults: { photo: PRICING.premiumPhotoPrice, clip: PRICING.premiumClipPrice } });
 }
 
 // multipart: gnomeId, kind (photo|clip), title, category, price (optional), media, teaser.
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "teaser must be an image" }, { status: 400 });
   }
   const priceIn = Number(form.get("price"));
-  const price = Number.isFinite(priceIn) && priceIn > 0 ? priceIn : kind === "photo" ? PRICING.premiumPhotoNomo : PRICING.premiumClipNomo;
+  const price = Number.isFinite(priceIn) && priceIn > 0 ? priceIn : kind === "photo" ? PRICING.premiumPhotoPrice : PRICING.premiumClipPrice;
 
   const ext = (f: File) => f.type.split("/")[1];
   const [mediaBlob, teaserBlob] = await Promise.all([

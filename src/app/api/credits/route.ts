@@ -28,23 +28,26 @@ export async function GET() {
     explorerUrl: "https://robinhoodchain.blockscout.com",
     pricing: {
       packs: PRICING.packs,
-      vipPriceNomo: PRICING.vipPriceNomo,
+      vipPriceCredits: PRICING.vipPriceCredits,
       vipPriceNohoes: PRICING.vipPriceNohoes,
       vipDays: PRICING.vipDays,
       vipFreeMessages: PRICING.vipFreeMessages,
-      nomoPerBatch: PRICING.nomoPerBatch,
+      creditsPerBatch: PRICING.creditsPerBatch,
       messagesPerBatch: PRICING.messagesPerBatch,
-      nomoPerImage: PRICING.nomoPerImage,
-      adPriceNomo: PRICING.adPriceNomo,
+      creditsPerImage: PRICING.creditsPerImage,
+      adPriceCredits: PRICING.adPriceCredits,
       adDays: PRICING.adDays,
       platformCutBps: PRICING.platformCutBps,
-      creatorMinPriceNomo: PRICING.creatorMinPriceNomo,
+      creatorMinPrice: PRICING.creatorMinPrice,
+      dmMinPrice: PRICING.dmMinPrice,
+      minCashout: PRICING.minCashout,
     },
   });
 }
 
-// Body: { txHash } — a NOMO transfer the signed-in wallet already sent to the
-// treasury. Credits exactly the amount transferred, once per transaction.
+// Body: { txHash } — a USDG transfer the signed-in wallet already sent to the
+// treasury pool. Credits exactly the amount transferred (1 credit = 1 USDG),
+// once per transaction.
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });

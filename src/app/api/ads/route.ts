@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
-import { isHash } from "viem";
 import { getSession } from "@/lib/auth";
 import { submitAd } from "@/lib/ads";
-import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
-import { claimTxs, releaseTxs } from "@/lib/txGuard";
+import { chargeHouseSale, creditRef } from "@/lib/earnings";
 import { PRICING } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 
-// Body: { txHash, mediaUrl, mediaType, linkUrl? } -- a NOMO payment the
-// signed-in wallet already sent to the treasury, plus a blob already
-// uploaded via /api/ads/upload. Submits the ad for owner review.
+// Body: { mediaUrl, mediaType, linkUrl? } -- a blob already uploaded via
+// /api/ads/upload. Spends AD_PRICE_CREDITS credits and submits the ad for
+// owner review.
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -18,14 +16,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Owner account can't run ads" }, { status: 400 });
   }
 
-  let body: { txHash?: string; mediaUrl?: string; mediaType?: string; linkUrl?: string };
+  let body: { mediaUrl?: string; mediaType?: string; linkUrl?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
-  if (!body.txHash || !isHash(body.txHash)) {
-    return NextResponse.json({ error: "Missing or invalid txHash" }, { status: 400 });
   }
   if (!body.mediaUrl || !body.mediaUrl.startsWith("https://")) {
     return NextResponse.json({ error: "Missing uploaded media" }, { status: 400 });
@@ -44,39 +39,12 @@ export async function POST(request: Request) {
     }
   }
 
-  const { treasury, token } = paymentConfig();
-  if (!treasury || !token) {
-    return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });
+  const result = await chargeHouseSale(session.wallet, PRICING.adPriceCredits, "ad", async () =>
+    Boolean(await submitAd(session.wallet, body.mediaUrl!, body.mediaType as "image" | "video", linkUrl, creditRef())),
+  );
+  if (result === "insufficient") {
+    return NextResponse.json({ error: "insufficient_credits", required: PRICING.adPriceCredits }, { status: 402 });
   }
-
-  let amount: number;
-  try {
-    amount = await verifyTokenTransfer(body.txHash, session.wallet, token, treasury);
-  } catch (e) {
-    if (e instanceof PaymentError) return NextResponse.json({ error: e.message }, { status: e.status });
-    console.error("verifyTokenTransfer error", e);
-    return NextResponse.json({ error: "Could not verify payment" }, { status: 502 });
-  }
-
-  if (amount < PRICING.adPriceNomo) {
-    return NextResponse.json(
-      { error: `That transfer was only ${amount} NOMO -- ads cost ${PRICING.adPriceNomo} NOMO` },
-      { status: 400 },
-    );
-  }
-
-  if (!(await claimTxs("ad", body.txHash))) {
-    return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
-  }
-  let created: Awaited<ReturnType<typeof submitAd>>;
-  try {
-    created = await submitAd(session.wallet, body.mediaUrl, body.mediaType, linkUrl, body.txHash);
-  } catch (e) {
-    await releaseTxs(body.txHash);
-    throw e;
-  }
-  if (!created) {
-    return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
-  }
+  if (result !== "ok") return NextResponse.json({ error: "Couldn't submit your ad" }, { status: 500 });
   return NextResponse.json({ success: true, reviewDays: "usually within a day" });
 }

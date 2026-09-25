@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { ensureChain, sendTokenTransfer } from "@/lib/walletTx";
+import { usd } from "@/lib/money";
 
 type Config = {
   creditsAvailable: number | null;
@@ -17,14 +18,14 @@ type Config = {
   chainName: string;
   explorerUrl: string;
   pricing: {
-    packs: { name: string; nomo: number }[];
-    vipPriceNomo: number;
+    packs: { name: string; usd: number }[];
+    vipPriceCredits: number;
     vipPriceNohoes: number;
     vipDays: number;
     vipFreeMessages: number;
-    nomoPerBatch: number;
+    creditsPerBatch: number;
     messagesPerBatch: number;
-    nomoPerImage: number;
+    creditsPerImage: number;
   };
 };
 
@@ -34,7 +35,7 @@ const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 
 export default function CreditsPage() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
-  const [amount, setAmount] = useState(1);
+  const [amount, setAmount] = useState(5);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -43,7 +44,7 @@ export default function CreditsPage() {
     if (!res.ok) return;
     const c: Config = await res.json();
     setConfig(c);
-    setAmount(c.pricing.packs[0]?.nomo ?? 1);
+    setAmount(c.pricing.packs[0]?.usd ?? 5);
   };
 
   // Sends `amount` of `token` to `to` from the connected wallet, then polls
@@ -93,10 +94,34 @@ export default function CreditsPage() {
     }
   };
 
+  // VIP bought with credits: no wallet transfer, just a server-side spend.
+  const buyVipWithCredits = async () => {
+    setPending(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/vip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "credits" }),
+      });
+      const data = await res.json();
+      setStatus(
+        res.ok
+          ? `VIP active until ${new Date(String(data.vipUntil)).toLocaleDateString()}.`
+          : data.error === "insufficient_credits"
+            ? `You need ${usd(Number(data.required))} in credits — top up below.`
+            : (data.error ?? "Something went wrong"),
+      );
+      if (res.ok) await loadConfig();
+    } finally {
+      setPending(false);
+    }
+  };
+
   const p = config?.pricing;
-  const perks = (nomo: number) =>
+  const perks = (dollars: number) =>
     p
-      ? `${fmt(Math.floor((nomo / p.nomoPerBatch) * p.messagesPerBatch))} msgs / ${fmt(Math.floor(nomo / p.nomoPerImage))} pics`
+      ? `${fmt(Math.floor((dollars / p.creditsPerBatch) * p.messagesPerBatch))} msgs or ${fmt(Math.floor(dollars / p.creditsPerImage))} pics`
       : "";
   const vipActive = config?.vipUntil ? new Date(config.vipUntil) : null;
 
@@ -142,7 +167,7 @@ export default function CreditsPage() {
                 rel="noopener noreferrer"
                 className="w-full rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-400/20"
               >
-                Don&apos;t have NOMO? Swap for it on Uniswap →
+                Need USDG? Swap for it on Uniswap →
               </a>
             )}
 
@@ -161,15 +186,11 @@ export default function CreditsPage() {
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  disabled={pending || !config.treasury || !config.token}
-                  onClick={() =>
-                    sendAndRedeem(config.token!, config.treasury!, p.vipPriceNomo, "/api/vip", { method: "nomo" }, (d) =>
-                      `VIP active until ${new Date(String(d.vipUntil)).toLocaleDateString()}.`,
-                    )
-                  }
+                  disabled={pending}
+                  onClick={buyVipWithCredits}
                   className="rounded-xl bg-amber-400 px-3 py-3 text-sm font-black text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Pay {fmt(p.vipPriceNomo)} NOMO
+                  {usd(p.vipPriceCredits)} in credits
                 </button>
                 <button
                   disabled={pending || !config.nohoesToken}
@@ -189,35 +210,36 @@ export default function CreditsPage() {
             </section>
 
             <section className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-neutral-900/60 p-5">
-              <p className="text-left text-xs font-bold uppercase tracking-widest text-pink-400">Credit Packs</p>
+              <p className="text-left text-xs font-bold uppercase tracking-widest text-pink-400">Buy Credits with USDG</p>
+              <p className="text-left text-xs text-neutral-500">1 credit = $1 USDG. Credits work everywhere on the site.</p>
               {config.creditsAvailable !== null && (
                 <p className="text-left text-sm text-neutral-400">
-                  Balance: <span className="font-bold text-white">{fmt(config.creditsAvailable)} NOMO</span>
+                  Balance: <span className="font-bold text-white">{usd(config.creditsAvailable)}</span> in credits
                 </p>
               )}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {p.packs.map((pack) => (
                   <button
                     key={pack.name}
-                    onClick={() => setAmount(pack.nomo)}
+                    onClick={() => setAmount(pack.usd)}
                     className={`rounded-xl border p-3 text-left transition ${
-                      amount === pack.nomo ? "border-pink-500 bg-pink-500/10" : "border-white/10 hover:bg-white/5"
+                      amount === pack.usd ? "border-pink-500 bg-pink-500/10" : "border-white/10 hover:bg-white/5"
                     }`}
                   >
                     <p className="text-xs font-bold text-pink-400">{pack.name}</p>
-                    <p className="text-lg font-black text-white">{fmt(pack.nomo)} NOMO</p>
-                    <p className="text-[11px] text-neutral-500">{perks(pack.nomo)}</p>
+                    <p className="text-lg font-black text-white">{usd(pack.usd)}</p>
+                    <p className="text-[11px] text-neutral-500">{perks(pack.usd)}</p>
                   </button>
                 ))}
               </div>
               <label className="flex flex-col gap-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Custom amount (NOMO)
+                Custom amount (USDG)
                 <input
                   type="number"
-                  min={0.01}
-                  step={0.01}
+                  min={1}
+                  step={1}
                   value={amount}
-                  onChange={(e) => setAmount(Math.max(0.01, Number(e.target.value)))}
+                  onChange={(e) => setAmount(Math.max(1, Math.round(Number(e.target.value) * 100) / 100))}
                   className="rounded-lg bg-white/5 px-4 py-2 text-base font-bold text-white focus:outline-none focus:ring-1 focus:ring-pink-500"
                 />
               </label>
@@ -225,15 +247,15 @@ export default function CreditsPage() {
                 disabled={pending || !config.treasury || !config.token}
                 onClick={() =>
                   sendAndRedeem(config.token!, config.treasury!, amount, "/api/credits", {}, (d) =>
-                    `Credited ${fmt(Number(d.credited))} NOMO. Balance: ${fmt(Number(d.creditsAvailable))}.`,
+                    `Added ${usd(Number(d.credited))} in credits. Balance: ${usd(Number(d.creditsAvailable))}.`,
                   )
                 }
                 className="w-full rounded-full bg-pink-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {pending ? "Processing..." : `Send ${fmt(amount)} NOMO`}
+                {pending ? "Processing..." : `Pay ${fmt(amount)} USDG`}
               </button>
               {!config.treasury && (
-                <p className="text-[11px] text-neutral-500">NOMO payments open soon.</p>
+                <p className="text-[11px] text-neutral-500">Payments open soon.</p>
               )}
             </section>
 
@@ -245,8 +267,8 @@ export default function CreditsPage() {
       <footer className="border-t border-white/10 px-6 py-8">
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 text-center text-xs text-neutral-500">
           <p>
-            18+ only. Credits and VIP passes are non-refundable and have no cash value. Burned $NOHOES is sent
-            to the dead address and gone for good.
+            18+ only. Credits you buy are for spending on the site: they&apos;re non-refundable and can&apos;t be cashed
+            out (only creators cash out what they earn). Burned $NOHOES is sent to the dead address and gone for good.
           </p>
         </div>
       </footer>

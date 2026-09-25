@@ -32,8 +32,6 @@ export type DayStats = {
   vipActivations: number;
 };
 
-const NOMO_PRICE_USD = Number(process.env.NOMO_PRICE_USD ?? 7);
-
 // Stats since UTC midnight today.
 export async function getTodayStats(): Promise<DayStats> {
   const sql = db();
@@ -46,7 +44,7 @@ export async function getTodayStats(): Promise<DayStats> {
     sql`
       SELECT coalesce(sum(delta), 0) AS nomo
       FROM credit_ledger
-      WHERE delta > 0 AND created_at >= date_trunc('day', now())`,
+      WHERE reason = 'purchase' AND delta > 0 AND created_at >= date_trunc('day', now())`,
     sql`
       SELECT count(*) AS n
       FROM credit_ledger
@@ -73,6 +71,7 @@ export async function getTodayStats(): Promise<DayStats> {
       else stats.freeImages += Number(row.n);
     }
   }
-  stats.usdRevenue = stats.nomoRevenue * NOMO_PRICE_USD;
+  // Credits are bought 1:1 with USDG, so top-ups are already dollars.
+  stats.usdRevenue = stats.nomoRevenue;
   return stats;
 }

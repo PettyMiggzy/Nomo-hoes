@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import WalletConnect, { type SessionInfo } from "@/components/WalletConnect";
 import { categoryLabel } from "@/lib/categories";
-import { buyDmBundle, type PayConfig } from "@/lib/unlockClient";
+import { buyDmBundle, NeedCredits } from "@/lib/unlockClient";
+import { usd } from "@/lib/money";
 import ReportButton from "@/components/ReportButton";
 
 type Profile = {
@@ -14,14 +15,13 @@ type Profile = {
   posts: { id: number; title: string; category: string | null; gnomeName: string; teaserUrl: string | null; priceNomo: number }[];
 };
 
-const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 });
 
 export default function CreatorProfilePage({ params }: { params: Promise<{ wallet: string }> }) {
   const { wallet } = use(params);
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
   const [session, setSession] = useState<SessionInfo | null>(null);
-  const [config, setConfig] = useState<PayConfig | null>(null);
+  const [needTopUp, setNeedTopUp] = useState(false);
   const [left, setLeft] = useState(0);
   const [busy, setBusy] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -41,24 +41,20 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ walle
 
   const onConnected = (s: SessionInfo) => {
     setSession(s);
-    fetch("/api/credits")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((c) => c && setConfig(c))
-      .catch(() => {});
     if (!s.owner) refreshLeft(s.wallet);
   };
 
   const buy = async (messages: number) => {
-    const eth = window.ethereum;
-    if (!session || !eth || !profile?.dm) return;
+    if (!session || !profile?.dm) return;
     setBusy(messages);
     setStatus(null);
+    setNeedTopUp(false);
     try {
-      await buyDmBundle(eth, session.wallet, config, profile.creator.wallet, profile.dm.priceNomo, messages, setStatus);
-      setStatus(null);
+      await buyDmBundle(profile.creator.wallet, messages);
       await refreshLeft(session.wallet);
       router.push(`/messages?creator=${profile.creator.wallet}`);
     } catch (e) {
+      setNeedTopUp(e instanceof NeedCredits);
       setStatus(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(null);
@@ -105,7 +101,7 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ walle
             <p className="text-sm text-neutral-500">{creator.displayName} isn&apos;t taking messages right now.</p>
           ) : isSelf ? (
             <p className="text-sm text-neutral-400">
-              Fans pay {fmt(dm.priceNomo)} NOMO per message to DM you.{" "}
+              Fans pay {usd(dm.priceNomo)} per message to DM you.{" "}
               <Link href="/messages" className="text-pink-400 underline">
                 Open your inbox
               </Link>
@@ -114,7 +110,7 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ walle
             <>
               <p className="text-lg font-black text-white">💬 Message {creator.displayName}</p>
               <p className="mt-1 text-sm text-neutral-400">
-                {fmt(dm.priceNomo)} NOMO per message · they reply personally
+                {usd(dm.priceNomo)} per message · they reply personally
               </p>
               {!session ? (
                 <div className="mt-4 flex justify-center">
@@ -136,21 +132,30 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ walle
                     {dm.bundles.map((n) => (
                       <button
                         key={n}
-                        disabled={busy !== null || !config}
+                        disabled={busy !== null}
                         onClick={() => buy(n)}
                         className="flex flex-col items-center rounded-xl border border-pink-500/40 bg-pink-500/10 px-2 py-3 transition hover:bg-pink-500/20 disabled:opacity-40"
                       >
                         <span className="text-lg font-black text-white">{n}</span>
                         <span className="text-[11px] text-neutral-400">messages</span>
                         <span className="mt-1 text-xs font-bold text-pink-300">
-                          {busy === n ? "..." : `${fmt(dm.priceNomo * n)} NOMO`}
+                          {busy === n ? "..." : usd(Math.round(dm.priceNomo * n * 1e6) / 1e6)}
                         </span>
                       </button>
                     ))}
                   </div>
                 </>
               )}
-              {status && <p className="mt-3 break-all text-xs text-neutral-300">{status}</p>}
+              {status && (
+                <p className="mt-3 text-xs text-neutral-300">
+                  {status}{" "}
+                  {needTopUp && (
+                    <Link href="/credits" className="font-bold text-pink-400 underline">
+                      Top up →
+                    </Link>
+                  )}
+                </p>
+              )}
             </>
           )}
         </section>
@@ -173,7 +178,7 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ walle
                   <div className="p-3">
                     <p className="truncate text-sm font-bold text-white">{p.title}</p>
                     <p className="text-[11px] text-neutral-500">
-                      {p.gnomeName} · {categoryLabel(p.category)} · {fmt(p.priceNomo)} NOMO
+                      {p.gnomeName} · {categoryLabel(p.category)} · {usd(p.priceNomo)}
                     </p>
                   </div>
                 </Link>

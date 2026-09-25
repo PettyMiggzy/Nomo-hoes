@@ -7,7 +7,7 @@ import NomPadBanner from "@/components/NomPadBanner";
 export const metadata: Metadata = {
   title: "Meet the Gnomes — NOMO HOES",
   description:
-    "24 fantasy gnome companions, each with their own personality. Chat and unlock art with $NOMO. 18+ fictional AI characters.",
+    "24 fantasy gnome companions, each with their own personality. Chat and unlock art with credits. 18+ fictional AI characters.",
 };
 
 export default function GnomesPage() {
@@ -31,7 +31,7 @@ export default function GnomesPage() {
         </h1>
         <p className="mx-auto mt-3 max-w-lg text-balance text-neutral-400">
           24 fictional companions, 24 personalities. Chat free for a bit, then
-          keep it going with $NOMO. 18+ only — fictional AI characters, not
+          keep it going with credits. 18+ only — fictional AI characters, not
           real people.
         </p>
 
