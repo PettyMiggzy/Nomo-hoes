@@ -36,6 +36,8 @@ export async function GET() {
       nomoPerImage: PRICING.nomoPerImage,
       adPriceNomo: PRICING.adPriceNomo,
       adDays: PRICING.adDays,
+      platformCutBps: PRICING.platformCutBps,
+      creatorMinPriceNomo: PRICING.creatorMinPriceNomo,
     },
   });
 }

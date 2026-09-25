@@ -23,7 +23,17 @@ export const PRICING = {
   ],
   adPriceNomo: num(process.env.AD_PRICE_NOMO, 5),
   adDays: num(process.env.AD_DAYS, 7),
+  platformCutBps: num(process.env.PLATFORM_CUT_BPS, 2000),
+  creatorMinPriceNomo: num(process.env.CREATOR_MIN_PRICE_NOMO, 0.02),
 };
+
+// Splits a marketplace sale so the two amounts always sum exactly to
+// `price` (the remainder after rounding goes to the platform cut).
+export function splitSale(price: number): { creatorCut: number; platformCut: number } {
+  const creatorCut = Math.round(((price * (10000 - PRICING.platformCutBps)) / 10000) * 1e6) / 1e6;
+  const platformCut = Math.round((price - creatorCut) * 1e6) / 1e6;
+  return { creatorCut, platformCut };
+}
 
 export function packPerks(nomo: number) {
   const messages = Math.floor((nomo / PRICING.nomoPerBatch) * PRICING.messagesPerBatch + 1e-9);

@@ -25,6 +25,10 @@ npm run dev
 
 - `/gnomes` — the roster; `/gnomes/[id]` — chat with a gnome (free messages, then credits or VIP)
 - `/credits` — buy credit packs or a VIP Pass (pay in NOMO, or burn $NOHOES for VIP)
+- `/advertise` — pay NOMO to run your own image/video ad in the gnome-chat sidebar; `/owner/ads` reviews submissions
+- `/creator` — sign up and sell AI-generated gnome scenes; `/marketplace` — buy them. Each sale splits on chain
+  straight from the buyer's wallet (80% creator / 20% platform by default), no custodial payouts. `/owner/marketplace`
+  reviews submissions before they go live
 - `/owner` — password login for unlimited use with no wallet; `/owner/dashboard` — live revenue vs. Venice cost
 
 ## Pricing

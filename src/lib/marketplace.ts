@@ -1,0 +1,225 @@
+import { neon } from "@neondatabase/serverless";
+
+function db() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not configured");
+  return neon(url);
+}
+
+// Lazily creates tables on first use -- see src/lib/ads.ts for why.
+let schemaReady: Promise<void> | null = null;
+function ensureSchema(): Promise<void> {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      const sql = db();
+      await sql`
+        CREATE TABLE IF NOT EXISTS creators (
+          wallet TEXT PRIMARY KEY,
+          display_name TEXT NOT NULL,
+          bio TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS creator_posts (
+          id BIGSERIAL PRIMARY KEY,
+          creator_wallet TEXT NOT NULL,
+          gnome_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          scene TEXT NOT NULL,
+          image_url TEXT NOT NULL,
+          price_nomo NUMERIC NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS creator_purchases (
+          id BIGSERIAL PRIMARY KEY,
+          post_id BIGINT NOT NULL,
+          creator_wallet TEXT NOT NULL,
+          buyer_wallet TEXT NOT NULL,
+          creator_tx_hash TEXT UNIQUE NOT NULL,
+          treasury_tx_hash TEXT UNIQUE NOT NULL,
+          amount_nomo NUMERIC NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          UNIQUE (post_id, buyer_wallet)
+        )`;
+    })();
+  }
+  return schemaReady;
+}
+
+const addr = (wallet: string) => wallet.toLowerCase();
+
+export type Creator = { wallet: string; displayName: string; bio: string | null; createdAt: string };
+
+type CreatorRow = { wallet: string; display_name: string; bio: string | null; created_at: string };
+const mapCreator = (r: CreatorRow): Creator => ({
+  wallet: r.wallet,
+  displayName: r.display_name,
+  bio: r.bio,
+  createdAt: new Date(r.created_at).toISOString(),
+});
+
+export async function upsertCreator(wallet: string, displayName: string, bio: string | null): Promise<Creator> {
+  await ensureSchema();
+  const rows = await db()`
+    INSERT INTO creators (wallet, display_name, bio)
+    VALUES (${addr(wallet)}, ${displayName}, ${bio})
+    ON CONFLICT (wallet) DO UPDATE SET display_name = EXCLUDED.display_name, bio = EXCLUDED.bio
+    RETURNING wallet, display_name, bio, created_at`;
+  return mapCreator(rows[0] as unknown as CreatorRow);
+}
+
+export async function getCreator(wallet: string): Promise<Creator | null> {
+  await ensureSchema();
+  const rows = await db()`SELECT wallet, display_name, bio, created_at FROM creators WHERE wallet = ${addr(wallet)}`;
+  return rows.length ? mapCreator(rows[0] as unknown as CreatorRow) : null;
+}
+
+export type PostStatus = "pending" | "approved" | "rejected";
+
+export type CreatorPost = {
+  id: number;
+  creatorWallet: string;
+  gnomeId: string;
+  title: string;
+  scene: string;
+  imageUrl: string;
+  priceNomo: number;
+  status: PostStatus;
+  createdAt: string;
+};
+
+type PostRow = {
+  id: string | number;
+  creator_wallet: string;
+  gnome_id: string;
+  title: string;
+  scene: string;
+  image_url: string;
+  price_nomo: string | number;
+  status: PostStatus;
+  created_at: string;
+};
+
+function mapPost(r: PostRow): CreatorPost {
+  return {
+    id: Number(r.id),
+    creatorWallet: r.creator_wallet,
+    gnomeId: r.gnome_id,
+    title: r.title,
+    scene: r.scene,
+    imageUrl: r.image_url,
+    priceNomo: Number(r.price_nomo),
+    status: r.status,
+    createdAt: new Date(r.created_at).toISOString(),
+  };
+}
+
+export async function createPendingPost(
+  creatorWallet: string,
+  gnomeId: string,
+  title: string,
+  scene: string,
+  imageUrl: string,
+  priceNomo: number,
+): Promise<CreatorPost> {
+  await ensureSchema();
+  const rows = await db()`
+    INSERT INTO creator_posts (creator_wallet, gnome_id, title, scene, image_url, price_nomo)
+    VALUES (${addr(creatorWallet)}, ${gnomeId}, ${title}, ${scene}, ${imageUrl}, ${priceNomo})
+    RETURNING id, creator_wallet, gnome_id, title, scene, image_url, price_nomo, status, created_at`;
+  return mapPost(rows[0] as unknown as PostRow);
+}
+
+export async function myPosts(creatorWallet: string): Promise<CreatorPost[]> {
+  await ensureSchema();
+  const rows = await db()`
+    SELECT id, creator_wallet, gnome_id, title, scene, image_url, price_nomo, status, created_at
+    FROM creator_posts WHERE creator_wallet = ${addr(creatorWallet)} ORDER BY created_at DESC`;
+  return (rows as unknown as PostRow[]).map(mapPost);
+}
+
+export async function pendingPosts(): Promise<CreatorPost[]> {
+  await ensureSchema();
+  const rows = await db()`
+    SELECT id, creator_wallet, gnome_id, title, scene, image_url, price_nomo, status, created_at
+    FROM creator_posts WHERE status = 'pending' ORDER BY created_at ASC`;
+  return (rows as unknown as PostRow[]).map(mapPost);
+}
+
+export async function reviewPost(id: number, approve: boolean): Promise<boolean> {
+  await ensureSchema();
+  const rows = await db()`
+    UPDATE creator_posts SET status = ${approve ? "approved" : "rejected"}
+    WHERE id = ${id} AND status = 'pending'
+    RETURNING id`;
+  return rows.length > 0;
+}
+
+export type MarketplaceListing = CreatorPost & { creatorName: string };
+
+export async function activeListings(limit = 60): Promise<MarketplaceListing[]> {
+  await ensureSchema();
+  const rows = await db()`
+    SELECT p.id, p.creator_wallet, p.gnome_id, p.title, p.scene, p.image_url, p.price_nomo, p.status, p.created_at,
+           c.display_name AS creator_name
+    FROM creator_posts p
+    JOIN creators c ON c.wallet = p.creator_wallet
+    WHERE p.status = 'approved'
+    ORDER BY p.created_at DESC
+    LIMIT ${limit}`;
+  return (rows as unknown as (PostRow & { creator_name: string })[]).map((r) => ({
+    ...mapPost(r),
+    creatorName: r.creator_name,
+  }));
+}
+
+export async function getPost(id: number): Promise<CreatorPost | null> {
+  await ensureSchema();
+  const rows = await db()`
+    SELECT id, creator_wallet, gnome_id, title, scene, image_url, price_nomo, status, created_at
+    FROM creator_posts WHERE id = ${id}`;
+  return rows.length ? mapPost(rows[0] as unknown as PostRow) : null;
+}
+
+export async function hasPurchased(postId: number, buyerWallet: string): Promise<boolean> {
+  await ensureSchema();
+  const rows = await db()`
+    SELECT 1 FROM creator_purchases WHERE post_id = ${postId} AND buyer_wallet = ${addr(buyerWallet)}`;
+  return rows.length > 0;
+}
+
+// Idempotent on both tx hashes and on (post, buyer) -- a resubmitted or
+// double-clicked purchase can never be recorded twice.
+export async function recordPurchase(
+  postId: number,
+  creatorWallet: string,
+  buyerWallet: string,
+  creatorTxHash: string,
+  treasuryTxHash: string,
+  amountNomo: number,
+): Promise<boolean> {
+  await ensureSchema();
+  const rows = await db()`
+    INSERT INTO creator_purchases (post_id, creator_wallet, buyer_wallet, creator_tx_hash, treasury_tx_hash, amount_nomo)
+    VALUES (${postId}, ${addr(creatorWallet)}, ${addr(buyerWallet)}, ${creatorTxHash.toLowerCase()}, ${treasuryTxHash.toLowerCase()}, ${amountNomo})
+    ON CONFLICT DO NOTHING
+    RETURNING id`;
+  return rows.length > 0;
+}
+
+export async function myPurchasedPostIds(buyerWallet: string): Promise<number[]> {
+  await ensureSchema();
+  const rows = await db()`SELECT post_id FROM creator_purchases WHERE buyer_wallet = ${addr(buyerWallet)}`;
+  return (rows as unknown as { post_id: string | number }[]).map((r) => Number(r.post_id));
+}
+
+export async function creatorEarnings(creatorWallet: string): Promise<{ sales: number; earnedNomo: number }> {
+  await ensureSchema();
+  const rows = await db()`
+    SELECT count(*) AS n, coalesce(sum(amount_nomo), 0) AS total
+    FROM creator_purchases WHERE creator_wallet = ${addr(creatorWallet)}`;
+  const r = rows[0] as unknown as { n: string; total: string };
+  return { sales: Number(r.n), earnedNomo: Number(r.total) };
+}

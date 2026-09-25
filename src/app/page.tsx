@@ -73,6 +73,9 @@ export default function Home() {
           <Link href="/gnomes" className="hover:text-white">
             The Gnomes
           </Link>
+          <Link href="/marketplace" className="hover:text-white">
+            Marketplace
+          </Link>
           <Link href="/credits" className="hover:text-white">
             Credits
           </Link>
