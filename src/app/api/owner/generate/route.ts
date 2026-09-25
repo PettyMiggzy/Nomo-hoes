@@ -7,13 +7,26 @@ export const maxDuration = 60;
 
 const MAX_PROMPT_LEN = 500;
 
+// Clamp to the model's supported range, snapped to a multiple of 8.
+const dim = (n?: number) =>
+  Number.isFinite(n) ? Math.min(1280, Math.max(256, Math.round(Number(n) / 8) * 8)) : undefined;
+
 // Owner-only raw image generation for one-off assets (stickers, marketing,
 // banners) that don't fit the per-gnome explicit-scene pipeline in /api/image.
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session?.owner) return NextResponse.json({ error: "Owner only" }, { status: 403 });
 
-  let body: { prompt?: string; seed?: number; transparent?: boolean; model?: string; negative_prompt?: string };
+  let body: {
+    prompt?: string;
+    seed?: number;
+    transparent?: boolean;
+    model?: string;
+    negative_prompt?: string;
+    width?: number;
+    height?: number;
+    aspect_ratio?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -27,6 +40,9 @@ export async function POST(request: Request) {
     let image = await veniceGenerateImage(prompt, seed, {
       model: body.model,
       negativePrompt: body.negative_prompt?.slice(0, MAX_PROMPT_LEN),
+      width: dim(body.width),
+      height: dim(body.height),
+      aspectRatio: /^\d{1,2}:\d{1,2}$/.test(body.aspect_ratio ?? "") ? body.aspect_ratio : undefined,
     });
     let contentType = "image/webp";
     if (body.transparent) {

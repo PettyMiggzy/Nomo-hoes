@@ -59,13 +59,13 @@ const EXPLICIT_NEGATIVE =
 export async function veniceGenerateImage(
   prompt: string,
   seed: number,
-  opts: { model?: string; negativePrompt?: string } = {},
+  opts: { model?: string; negativePrompt?: string; width?: number; height?: number; aspectRatio?: string } = {},
 ): Promise<Buffer> {
   const negative_prompt = opts.negativePrompt ? `${EXPLICIT_NEGATIVE}, ${opts.negativePrompt}` : EXPLICIT_NEGATIVE;
   // Newer models (qwen-image etc.) take an aspect ratio instead of width/height/steps.
   const sizing = opts.model
-    ? { aspect_ratio: "1:1" }
-    : { width: 1024, height: 1024, steps: 30, cfg_scale: 6 };
+    ? { aspect_ratio: opts.aspectRatio ?? "1:1" }
+    : { width: opts.width ?? 1024, height: opts.height ?? 1024, steps: 30, cfg_scale: 6 };
   const res = await veniceFetch("/image/generate", {
     model: opts.model ?? IMAGE_MODEL,
     prompt,
