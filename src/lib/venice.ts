@@ -78,6 +78,24 @@ export async function veniceGenerateImage(
   return Buffer.from(data.images[0], "base64");
 }
 
+// Venice's own cutout endpoint -- returns a PNG with the background
+// stripped to alpha transparency. Raw binary response, not JSON.
+export async function veniceRemoveBackground(image: Buffer): Promise<Buffer> {
+  const res = await fetch(`${BASE}/image/background-remove`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ image: image.toString("base64") }),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Venice background-remove ${res.status}: ${detail}`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
+
 export type VeniceBalance = { usd: number | null; diem: number | null };
 
 // Venice's own remaining balance, for the profit dashboard's "top up soon"

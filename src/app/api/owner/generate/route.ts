@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { veniceGenerateImage } from "@/lib/venice";
+import { veniceGenerateImage, veniceRemoveBackground } from "@/lib/venice";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session?.owner) return NextResponse.json({ error: "Owner only" }, { status: 403 });
 
-  let body: { prompt?: string; seed?: number };
+  let body: { prompt?: string; seed?: number; transparent?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -24,9 +24,14 @@ export async function POST(request: Request) {
   const seed = Number.isFinite(body.seed) ? Number(body.seed) : Math.floor(Math.random() * 1000000);
 
   try {
-    const image = await veniceGenerateImage(prompt, seed);
+    let image = await veniceGenerateImage(prompt, seed);
+    let contentType = "image/webp";
+    if (body.transparent) {
+      image = await veniceRemoveBackground(image);
+      contentType = "image/png";
+    }
     return new NextResponse(new Blob([Uint8Array.from(image)]), {
-      headers: { "Content-Type": "image/webp" },
+      headers: { "Content-Type": contentType },
     });
   } catch (e) {
     console.error("owner generate error", e);
