@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getDmSettings, recordBundle } from "@/lib/dm";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
 import { PRICING, splitSale } from "@/lib/pricing";
-import { txAlreadyRedeemed } from "@/lib/txGuard";
+import { claimTxs, releaseTxs } from "@/lib/txGuard";
 
 export const runtime = "nodejs";
 
@@ -37,9 +37,6 @@ export async function POST(request: Request) {
 
   const { treasury, token } = paymentConfig();
   if (!treasury || !token) return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });
-  if (await txAlreadyRedeemed(body.creatorTxHash, body.treasuryTxHash)) {
-    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
-  }
 
   // Priced at the creator's current rate; if they raised it mid-purchase the
   // fan's payment comes up short and is rejected rather than under-credited.
@@ -64,7 +61,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `The platform payment was short (${treasuryAmount} of ${platformCut} NOMO)` }, { status: 400 });
   }
 
-  const ok = await recordBundle(creator, session.wallet, messages, creatorAmount, body.creatorTxHash, body.treasuryTxHash);
+  if (!(await claimTxs(`dm:${creator.toLowerCase()}`, body.creatorTxHash, body.treasuryTxHash))) {
+    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
+  }
+  let ok: boolean;
+  try {
+    ok = await recordBundle(creator, session.wallet, messages, creatorAmount, body.creatorTxHash, body.treasuryTxHash);
+  } catch (e) {
+    await releaseTxs(body.creatorTxHash, body.treasuryTxHash);
+    throw e;
+  }
   if (!ok) return NextResponse.json({ error: "This payment was already redeemed" }, { status: 400 });
   return NextResponse.json({ success: true });
 }

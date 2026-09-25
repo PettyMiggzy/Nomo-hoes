@@ -3,6 +3,7 @@ import { isHash } from "viem";
 import { getSession } from "@/lib/auth";
 import { submitAd } from "@/lib/ads";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
+import { claimTxs, releaseTxs } from "@/lib/txGuard";
 import { PRICING } from "@/lib/pricing";
 
 export const runtime = "nodejs";
@@ -64,7 +65,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const created = await submitAd(session.wallet, body.mediaUrl, body.mediaType, linkUrl, body.txHash);
+  if (!(await claimTxs("ad", body.txHash))) {
+    return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
+  }
+  let created: Awaited<ReturnType<typeof submitAd>>;
+  try {
+    created = await submitAd(session.wallet, body.mediaUrl, body.mediaType, linkUrl, body.txHash);
+  } catch (e) {
+    await releaseTxs(body.txHash);
+    throw e;
+  }
   if (!created) {
     return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
   }

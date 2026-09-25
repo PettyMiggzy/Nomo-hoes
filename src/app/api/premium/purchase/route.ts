@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isHash } from "viem";
 import { getSession } from "@/lib/auth";
 import { getItem, hasUnlocked, recordUnlock } from "@/lib/premium";
-import { txAlreadyRedeemed } from "@/lib/txGuard";
+import { claimTxs, releaseTxs } from "@/lib/txGuard";
 import { vipUntil } from "@/lib/credits";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
 
@@ -33,10 +33,6 @@ export async function POST(request: Request) {
   const { treasury, token } = paymentConfig();
   if (!treasury || !token) return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });
 
-  if (await txAlreadyRedeemed(body.txHash)) {
-    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
-  }
-
   let amount: number;
   try {
     amount = await verifyTokenTransfer(body.txHash, session.wallet, token, treasury);
@@ -49,7 +45,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Payment was short (${amount} of ${item.priceNomo} NOMO)` }, { status: 400 });
   }
 
-  const recorded = await recordUnlock(itemId, session.wallet, body.txHash, amount);
+  if (!(await claimTxs(`premium:${itemId}`, body.txHash))) {
+    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
+  }
+  let recorded: boolean;
+  try {
+    recorded = await recordUnlock(itemId, session.wallet, body.txHash, amount);
+  } catch (e) {
+    await releaseTxs(body.txHash);
+    throw e;
+  }
   if (!recorded) return NextResponse.json({ error: "This payment was already redeemed" }, { status: 400 });
   return NextResponse.json({ success: true });
 }

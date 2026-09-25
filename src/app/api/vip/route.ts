@@ -3,6 +3,7 @@ import { isHash } from "viem";
 import { getSession } from "@/lib/auth";
 import { activateVip } from "@/lib/credits";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
+import { claimTxs, releaseTxs } from "@/lib/txGuard";
 import { PRICING } from "@/lib/pricing";
 
 export const runtime = "nodejs";
@@ -55,7 +56,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const until = await activateVip(session.wallet, `vip:${body.method}`, body.txHash);
+  if (!(await claimTxs(`vip:${body.method}`, body.txHash))) {
+    return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
+  }
+  let until: Date | null;
+  try {
+    until = await activateVip(session.wallet, `vip:${body.method}`, body.txHash);
+  } catch (e) {
+    await releaseTxs(body.txHash);
+    throw e;
+  }
   if (!until) {
     return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
   }

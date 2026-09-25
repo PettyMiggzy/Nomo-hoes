@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getPost, recordPurchase, hasPurchased } from "@/lib/marketplace";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
 import { splitSale } from "@/lib/pricing";
-import { txAlreadyRedeemed } from "@/lib/txGuard";
+import { claimTxs, releaseTxs } from "@/lib/txGuard";
 
 export const runtime = "nodejs";
 
@@ -39,10 +39,6 @@ export async function POST(request: Request) {
   const { treasury, token } = paymentConfig();
   if (!treasury || !token) return NextResponse.json({ error: "Payments are not configured yet" }, { status: 503 });
 
-  if (await txAlreadyRedeemed(body.creatorTxHash, body.treasuryTxHash)) {
-    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
-  }
-
   const { creatorCut, platformCut } = splitSale(post.priceNomo);
 
   let creatorAmount: number;
@@ -65,14 +61,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `The platform payment was short (${treasuryAmount} of ${platformCut} NOMO)` }, { status: 400 });
   }
 
-  const recorded = await recordPurchase(
-    postId,
-    post.creatorWallet,
-    session.wallet,
-    body.creatorTxHash,
-    body.treasuryTxHash,
-    creatorAmount,
-  );
+  if (!(await claimTxs(`post:${postId}`, body.creatorTxHash, body.treasuryTxHash))) {
+    return NextResponse.json({ error: "That transaction was already redeemed" }, { status: 400 });
+  }
+  let recorded: boolean;
+  try {
+    recorded = await recordPurchase(
+      postId,
+      post.creatorWallet,
+      session.wallet,
+      body.creatorTxHash,
+      body.treasuryTxHash,
+      creatorAmount,
+    );
+  } catch (e) {
+    await releaseTxs(body.creatorTxHash, body.treasuryTxHash);
+    throw e;
+  }
   if (!recorded) {
     return NextResponse.json({ error: "This purchase was already redeemed", imageUrl: post.imageUrl });
   }

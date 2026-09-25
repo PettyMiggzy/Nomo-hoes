@@ -4,6 +4,7 @@ import { getSession, CHAIN_ID } from "@/lib/auth";
 import { creditBalance, grantCredits, vipUntil } from "@/lib/credits";
 import { paymentConfig, verifyTokenTransfer, PaymentError } from "@/lib/payments";
 import { PRICING } from "@/lib/pricing";
+import { claimTxs, releaseTxs } from "@/lib/txGuard";
 
 export const runtime = "nodejs";
 
@@ -75,7 +76,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not verify payment" }, { status: 502 });
   }
 
-  const balance = await grantCredits(session.wallet, amount, "purchase", body.txHash);
+  if (!(await claimTxs("credits", body.txHash))) {
+    return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
+  }
+  let balance: number | null;
+  try {
+    balance = await grantCredits(session.wallet, amount, "purchase", body.txHash);
+  } catch (e) {
+    await releaseTxs(body.txHash);
+    throw e;
+  }
   if (balance === null) {
     return NextResponse.json({ error: "This transaction was already redeemed" }, { status: 409 });
   }
