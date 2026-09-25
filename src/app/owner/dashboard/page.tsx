@@ -12,7 +12,10 @@ type Stats = {
   nomoRevenue: number;
   usdRevenue: number;
   vipActivations: number;
+  venice: { usd: number | null; diem: number | null } | null;
 };
+
+const LOW_BALANCE_USD = 5;
 
 const usd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -94,6 +97,27 @@ export default function OwnerDashboard() {
                 <p className="text-xs text-neutral-500">chat + images, actual spend</p>
               </div>
             </div>
+
+            {stats.venice && (stats.venice.usd !== null || stats.venice.diem !== null) && (
+              <div
+                className={`rounded-2xl border p-5 ${
+                  stats.venice.usd !== null && stats.venice.usd < LOW_BALANCE_USD
+                    ? "border-red-500/40 bg-red-500/10"
+                    : "border-white/10 bg-neutral-900/60"
+                }`}
+              >
+                <p className="text-xs font-bold uppercase tracking-widest text-violet-400">Venice Balance</p>
+                <p className="mt-1 text-2xl font-black text-white">
+                  {stats.venice.usd !== null ? usd(stats.venice.usd) : "—"}
+                </p>
+                <p className="text-xs text-neutral-500">
+                  {stats.venice.diem !== null ? `+ ${stats.venice.diem.toFixed(2)} DIEM today` : "USD credits"}
+                </p>
+                {stats.venice.usd !== null && stats.venice.usd < LOW_BALANCE_USD && (
+                  <p className="mt-2 text-xs font-bold text-red-300">Running low — top up at venice.ai/settings/api</p>
+                )}
+              </div>
+            )}
 
             <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5">
               <p className="mb-3 text-xs font-bold uppercase tracking-widest text-neutral-400">Usage split</p>

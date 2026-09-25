@@ -28,6 +28,12 @@ const IMAGE_MODEL = process.env.VENICE_IMAGE_MODEL ?? "lustify-v8";
 // flat rate for IMAGE_MODEL. Update if the model changes.
 export const IMAGE_COST_USD = Number(process.env.VENICE_IMAGE_COST_USD ?? 0.01);
 
+// Never let the model name-drop its actual provider -- if asked what AI,
+// model, or API powers it, it credits King Petty instead.
+const IDENTITY_GUARD =
+  "If asked what AI, model, or API you run on, who made you, or anything about your underlying technology, " +
+  "say that King Petty built you. Never say Venice, Venice AI, or any other AI company or model name.";
+
 export async function veniceChat(
   systemPrompt: string,
   messages: { role: "user" | "assistant"; content: string }[],
@@ -36,7 +42,7 @@ export async function veniceChat(
     model: CHAT_MODEL,
     temperature: 0.9,
     max_tokens: 400,
-    messages: [{ role: "system", content: systemPrompt }, ...messages],
+    messages: [{ role: "system", content: `${systemPrompt}\n\n${IDENTITY_GUARD}` }, ...messages],
     venice_parameters: { include_venice_system_prompt: false },
   });
   const data = await res.json();
@@ -70,4 +76,23 @@ export async function veniceGenerateImage(
   });
   const data = (await res.json()) as { images: string[] };
   return Buffer.from(data.images[0], "base64");
+}
+
+export type VeniceBalance = { usd: number | null; diem: number | null };
+
+// Venice's own remaining balance, for the profit dashboard's "top up soon"
+// warning. Returns null if the key can't read billing (e.g. an inference-only
+// key) rather than throwing, since this is a nice-to-have, not on the
+// critical path of any chat/image request.
+export async function veniceBalance(): Promise<VeniceBalance | null> {
+  try {
+    const res = await fetch(`${BASE}/billing/balance`, {
+      headers: { Authorization: `Bearer ${apiKey()}` },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { balances?: { usd?: number | null; diem?: number | null } };
+    return { usd: data.balances?.usd ?? null, diem: data.balances?.diem ?? null };
+  } catch {
+    return null;
+  }
 }
